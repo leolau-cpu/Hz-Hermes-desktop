@@ -342,7 +342,7 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #ffffff;
+  background: #f9f9f9;
   border-radius: 4px;
   box-shadow: inset 0 0 0 1px #e5e5e5;
 }
@@ -860,11 +860,25 @@ button {
 
 .global-titlebar .icon-button:hover {
   --stroke-0: #000000;
-  background: #eaeaea;
+  background: #f9f9f9;
   color: #000000;
 }
 
 .global-titlebar .icon-button:hover .figma-icon {
+  --stroke-0: #000000;
+}
+
+.global-titlebar .icon-button:active,
+.global-titlebar .icon-button.active,
+.global-titlebar .icon-button[aria-pressed='true'] {
+  --stroke-0: #000000;
+  background: #f3f3f3;
+  color: #000000;
+}
+
+.global-titlebar .icon-button:active .figma-icon,
+.global-titlebar .icon-button.active .figma-icon,
+.global-titlebar .icon-button[aria-pressed='true'] .figma-icon {
   --stroke-0: #000000;
 }
 
@@ -921,13 +935,40 @@ button {
 .composer-toolbar .icon-button.ghost {
   width: 32px;
   height: 32px;
-  color: var(--color-text-muted);
+  color: #999999;
   border-radius: 999px;
 }
 
 .composer-toolbar .icon-button.ghost .figma-icon {
   width: 16px;
   height: 16px;
+}
+
+.composer-toolbar button:not(.send) {
+  color: #999999;
+}
+
+.composer-toolbar button:not(.send) .figma-icon {
+  --stroke-0: #999999;
+}
+
+.composer-toolbar button:not(.send):hover {
+  color: #000000;
+  background: #f9f9f9;
+}
+
+.composer-toolbar button:not(.send):hover .figma-icon,
+.composer-toolbar button:not(.send).active .figma-icon,
+.composer-toolbar button:not(.send):active .figma-icon,
+.composer-toolbar button:not(.send)[aria-pressed='true'] .figma-icon {
+  --stroke-0: #000000;
+}
+
+.composer-toolbar button:not(.send).active,
+.composer-toolbar button:not(.send):active,
+.composer-toolbar button:not(.send)[aria-pressed='true'] {
+  color: #000000;
+  background: #f3f3f3;
 }
 
 .side-scroll {
@@ -1664,6 +1705,25 @@ button {
   --fill-0: #000000;
 }
 
+.title-more-button.active {
+  color: #000000;
+  background: #f3f3f3;
+}
+
+.title-more-button.active .figma-icon {
+  --fill-0: #000000;
+  --stroke-0: #000000;
+}
+
+.conversation-title-popover {
+  --composer-popover-min-width: 220px;
+  min-width: 220px;
+}
+
+.conversation-rename-dialog {
+  width: 448px;
+}
+
 .sidebar-collapsed .content-panel {
   flex-basis: auto;
   width: auto;
@@ -1777,7 +1837,7 @@ button {
 
 .chat-message.user {
   color: #000000;
-  background: #f3f3f3;
+  background: #f9f9f9;
   box-shadow: none;
 }
 
@@ -1946,12 +2006,240 @@ button {
 }
 
 .model-select {
-  width: 121px;
+  width: auto;
+  min-width: 0;
+  max-width: 120px;
 }
 
 .model-select span {
-  width: 85px;
+  width: auto;
+  min-width: 0;
+  max-width: 92px;
   text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.composer-toolbar-popover-anchor {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.composer-toolbar-icon-action {
+  flex: 0 0 32px;
+}
+
+.composer-popover {
+  z-index: 1000;
+  width: max-content;
+  max-width: calc(100vw - 48px);
+  box-sizing: border-box;
+  padding: 8px 0;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 0 1px #e5e5e5,
+    0 8px 24px rgba(0, 0, 0, 0.05),
+    0 0 24px rgba(0, 0, 0, 0.05);
+  overflow-x: hidden;
+  will-change: top, left;
+}
+
+.composer-add-popover,
+.composer-add-snippet-popover {
+  --composer-popover-min-width: 160px;
+  min-width: 160px;
+}
+
+.composer-add-snippet-popover {
+  z-index: 1001;
+}
+
+.composer-popover-separator {
+  position: relative;
+  width: 100%;
+  height: 12px;
+  min-height: 12px;
+}
+
+.composer-popover-separator::before {
+  position: absolute;
+  top: 6px;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: #f3f3f3;
+  content: '';
+}
+
+.composer-skill-popover,
+.composer-employee-popover,
+.composer-permission-popover,
+.composer-model-popover {
+  --composer-popover-min-width: 220px;
+  min-width: 220px;
+}
+
+.composer-popover-option {
+  width: max-content;
+  min-width: 100%;
+  height: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  color: #000000;
+  text-align: left;
+  white-space: nowrap;
+  border-radius: 0;
+}
+
+.composer-popover-option-surface {
+  width: max-content;
+  min-width: calc(var(--composer-popover-min-width, 160px) - 16px);
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.composer-popover-option:hover .composer-popover-option-surface {
+  background: #f9f9f9;
+}
+
+.composer-popover-option:active .composer-popover-option-surface,
+.composer-popover-option.selected:active .composer-popover-option-surface {
+  background: #f3f3f3;
+}
+
+.composer-add-popover .composer-popover-option.selected .composer-popover-option-surface {
+  background: #f3f3f3;
+}
+
+.composer-popover-option .figma-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.composer-popover-option-label {
+  min-width: max-content;
+  flex: 1 1 auto;
+  overflow: visible;
+  text-overflow: clip;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.composer-popover-check {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #000000;
+}
+
+.composer-popover-option-chevron {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.composer-popover-option-chevron .figma-icon {
+  --stroke-0: #999999;
+}
+
+.composer-popover-option:hover .composer-popover-option-chevron .figma-icon {
+  --stroke-0: #000000;
+}
+
+.composer-popover-check .figma-icon {
+  --stroke-0: #000000;
+}
+
+.composer-skill-chip {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+}
+
+.composer-employee-avatar {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.composer-toolbar .permission-select {
+  --permission-color: #999999;
+  color: var(--permission-color);
+}
+
+.composer-toolbar .permission-select .figma-icon {
+  color: var(--permission-color);
+  --stroke-0: var(--permission-color);
+  --stroke-1: var(--permission-color);
+  --stroke-2: var(--permission-color);
+  --stroke-3: var(--permission-color);
+  --fill-0: var(--permission-color);
+  --fill-1: var(--permission-color);
+  --fill-2: var(--permission-color);
+  --fill-3: var(--permission-color);
+}
+
+.composer-toolbar .permission-select.permission-default {
+  --permission-color: #999999;
+}
+
+.composer-toolbar .permission-select.permission-default:hover {
+  --permission-color: #000000;
+  color: var(--permission-color);
+}
+
+.composer-toolbar .permission-select.permission-default.active,
+.composer-toolbar .permission-select.permission-default:active,
+.composer-toolbar .permission-select.permission-default[aria-pressed='true'] {
+  --permission-color: #000000;
+  color: var(--permission-color);
+}
+
+.composer-toolbar .permission-select.permission-default.active:hover,
+.composer-toolbar .permission-select.permission-default[aria-pressed='true']:hover {
+  --permission-color: #000000;
+  color: var(--permission-color);
+}
+
+.composer-toolbar .permission-select.permission-review,
+.composer-toolbar .permission-select.permission-review:hover,
+.composer-toolbar .permission-select.permission-review.active,
+.composer-toolbar .permission-select.permission-review:active,
+.composer-toolbar .permission-select.permission-review[aria-pressed='true'] {
+  --permission-color: #0088ff;
+  color: var(--permission-color);
+}
+
+.composer-toolbar .permission-select.permission-full,
+.composer-toolbar .permission-select.permission-full:hover,
+.composer-toolbar .permission-select.permission-full.active,
+.composer-toolbar .permission-select.permission-full:active,
+.composer-toolbar .permission-select.permission-full[aria-pressed='true'] {
+  --permission-color: #c42b1c;
+  color: var(--permission-color);
 }
 
 .sr-only {
@@ -2375,7 +2663,9 @@ button {
   top: calc(100% + 4px);
   right: 0;
   z-index: 8;
-  width: 160px;
+  width: max-content;
+  min-width: 160px;
+  max-width: calc(100vw - 32px);
   height: 88px;
   display: flex;
   flex-direction: column;
@@ -2392,6 +2682,7 @@ button {
 
 .scheduled-create-option {
   width: 100%;
+  min-width: 100%;
   height: 36px;
   min-height: 36px;
   display: flex;
@@ -2433,15 +2724,14 @@ button {
 }
 
 .scheduled-create-option-surface span {
-  min-width: 0;
+  min-width: max-content;
   flex: 1 1 auto;
-  overflow: hidden;
+  overflow: visible;
   color: #000000;
   font-size: 14px;
   font-weight: 400;
   line-height: 20px;
   letter-spacing: 0;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -2608,7 +2898,9 @@ button {
   top: calc(100% + 4px);
   right: 0;
   z-index: 20;
-  width: 160px;
+  width: max-content;
+  min-width: 160px;
+  max-width: calc(100vw - 32px);
   height: 88px;
   display: flex;
   flex-direction: column;
@@ -2624,7 +2916,8 @@ button {
 }
 
 .scheduled-task-menu button {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   height: 36px;
   min-height: 36px;
   display: flex;
@@ -2642,8 +2935,8 @@ button {
 }
 
 .scheduled-task-menu button span {
-  width: 100%;
-  min-width: 0;
+  width: max-content;
+  min-width: 100%;
   height: 36px;
   display: flex;
   align-items: center;
@@ -2977,8 +3270,8 @@ button {
 
 .settings-header {
   width: 100%;
-  flex: 0 0 72px;
-  height: 72px;
+  flex: 0 0 auto;
+  height: auto;
   padding-top: 0;
   background: #ffffff;
   user-select: none;
@@ -2987,12 +3280,13 @@ button {
 
 .settings-heading {
   width: 100%;
-  height: 72px;
+  min-height: 72px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
   padding-bottom: 24px;
+  box-sizing: border-box;
   box-shadow: inset 0 -1px 0 #f3f3f3;
 }
 
@@ -3105,8 +3399,17 @@ button {
   align-self: flex-start;
 }
 
-.settings-gateway-card-copy strong {
+.settings-gateway-card-title {
   width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-gateway-card-copy strong {
+  width: auto;
+  min-width: 0;
   overflow: hidden;
   color: #000000;
   font-size: 14px;
@@ -3115,6 +3418,33 @@ button {
   letter-spacing: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.settings-gateway-status-badge {
+  height: 16px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  color: #27b66a;
+  background: #e9f8f0;
+  box-shadow: inset 0 0 0 1px #27b66a;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 14px;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.settings-gateway-status-badge > span:first-child {
+  width: 4px;
+  height: 4px;
+  flex: 0 0 4px;
+  border-radius: 50%;
+  background: #27b66a;
 }
 
 .settings-gateway-card-copy small {
@@ -3366,7 +3696,9 @@ button {
   top: calc(100% + 4px);
   right: 0;
   z-index: 60;
-  width: 320px;
+  width: max-content;
+  min-width: 320px;
+  max-width: calc(100vw - 32px);
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -3381,7 +3713,8 @@ button {
 }
 
 .settings-api-key-menu > button {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   height: 52px;
   display: flex;
   align-items: center;
@@ -3392,8 +3725,9 @@ button {
 }
 
 .settings-api-key-menu-item-inner {
-  min-width: 0;
-  flex: 1 1 auto;
+  width: max-content;
+  min-width: 100%;
+  flex: 0 0 auto;
   height: 52px;
   display: flex;
   align-items: center;
@@ -3411,20 +3745,22 @@ button {
 }
 
 .settings-api-key-menu-item-inner > span {
-  min-width: 0;
-  flex: 1 1 auto;
+  width: max-content;
+  min-width: max-content;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
 }
 
 .settings-api-key-menu strong,
 .settings-api-key-menu small {
-  overflow: hidden;
+  width: max-content;
+  min-width: max-content;
+  overflow: visible;
   font-weight: 400;
   height: 20px;
   letter-spacing: 0;
   line-height: 20px;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -3514,6 +3850,10 @@ button {
 
 .settings-archive-trash:hover {
   background: #f9f9f9;
+}
+
+.settings-archive-trash:active {
+  background: #f3f3f3;
 }
 
 .settings-archive-trash .figma-icon {
@@ -3720,7 +4060,7 @@ button {
 
 .settings-about-update.loading {
   gap: 8px;
-  background: #eaeaea;
+  background: #f3f3f3;
   cursor: default;
 }
 
@@ -4024,7 +4364,9 @@ button {
   top: calc(100% + 4px);
   right: 0;
   z-index: 20;
-  width: 160px;
+  width: max-content;
+  min-width: 160px;
+  max-width: calc(100vw - 32px);
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -4039,7 +4381,8 @@ button {
 }
 
 .settings-account-menu button {
-  width: calc(100% - 16px);
+  width: max-content;
+  min-width: calc(100% - 16px);
   height: 36px;
   display: flex;
   align-items: center;
@@ -4069,16 +4412,15 @@ button {
 }
 
 .settings-account-menu button span {
-  min-width: 0;
+  min-width: max-content;
   flex: 1 1 auto;
-  overflow: hidden;
+  overflow: visible;
   color: #000000;
   font-size: 14px;
   font-weight: 400;
   line-height: 20px;
   letter-spacing: 0;
   text-align: left;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -4206,7 +4548,9 @@ button {
   top: calc(100% + 4px);
   right: 0;
   z-index: 50;
-  width: 220px;
+  width: max-content;
+  min-width: 220px;
+  max-width: calc(100vw - 32px);
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -4221,7 +4565,8 @@ button {
 }
 
 .settings-select-option {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   height: 36px;
   min-height: 36px;
   display: flex;
@@ -4233,8 +4578,8 @@ button {
 }
 
 .settings-select-option > span {
-  width: 100%;
-  min-width: 0;
+  width: max-content;
+  min-width: 100%;
   height: 36px;
   display: flex;
   align-items: center;
@@ -4252,15 +4597,14 @@ button {
 }
 
 .settings-select-option > span > span {
-  min-width: 0;
+  min-width: max-content;
   flex: 1 1 auto;
-  overflow: hidden;
+  overflow: visible;
   color: #000000;
   font-size: 14px;
   font-weight: 400;
   line-height: 20px;
   letter-spacing: 0;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -4456,7 +4800,7 @@ button {
 .settings-gateway-actions .settings-action-buttons button:nth-child(1).loading {
   width: 88px;
   gap: 8px;
-  background: #eaeaea;
+  background: #f3f3f3;
 }
 
 .settings-gateway-actions .settings-action-buttons button:nth-child(1):disabled {
@@ -4486,14 +4830,12 @@ button {
 }
 
 .settings-gateway-actions .settings-action-buttons button:nth-child(2) {
-  width: 120px;
   color: #000000;
   background: transparent;
   box-shadow: inset 0 0 0 1px #e5e5e5;
 }
 
 .settings-gateway-actions .settings-action-buttons button:nth-child(3) {
-  width: 106px;
   color: #ffffff;
   background: #000000;
   border-radius: 8px;
@@ -5023,7 +5365,9 @@ button {
   top: calc(100% + 4px);
   right: 0;
   z-index: 12;
-  width: 160px;
+  width: max-content;
+  min-width: 160px;
+  max-width: calc(100vw - 32px);
   height: 136px;
   display: flex;
   flex-direction: column;
@@ -5038,7 +5382,8 @@ button {
 }
 
 .file-library-menu-item {
-  width: 160px;
+  width: max-content;
+  min-width: 100%;
   height: 36px;
   min-height: 36px;
   display: flex;
@@ -5051,7 +5396,8 @@ button {
 }
 
 .file-library-menu-surface {
-  width: 144px;
+  width: max-content;
+  min-width: 144px;
   height: 36px;
   display: flex;
   align-items: center;
@@ -5079,21 +5425,20 @@ button {
 }
 
 .file-library-menu-surface span {
-  min-width: 0;
+  min-width: max-content;
   flex: 1 1 auto;
-  overflow: hidden;
+  overflow: visible;
   color: #000000;
   font-size: 14px;
   font-weight: 400;
   line-height: 20px;
   letter-spacing: 0;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .file-library-menu-divider {
   position: relative;
-  width: 160px;
+  width: 100%;
   height: 12px;
   min-height: 12px;
 }
@@ -5102,7 +5447,7 @@ button {
   position: absolute;
   top: 6px;
   left: 16px;
-  width: 128px;
+  right: 16px;
   height: 1px;
   background: #f3f3f3;
   content: '';
@@ -5729,12 +6074,32 @@ button {
   --fill-0: currentColor;
 }
 
+.employee-card-action-add {
+  color: #ffffff;
+  background: #000000;
+}
+
+.employee-card-action-add:hover {
+  color: #ffffff;
+  background: #333333;
+}
+
+.employee-card-action-add.active,
+.employee-card-action-add:active {
+  color: #ffffff;
+  background: #000000;
+}
+
 .employee-card-menu {
-  width: 160px;
+  width: max-content;
+  min-width: 160px;
+  max-width: calc(100vw - 32px);
   height: 52px;
 }
 
 .employee-card-menu button {
+  width: 100%;
+  min-width: 100%;
   height: 36px;
   padding: 0 8px;
 }
@@ -5744,9 +6109,9 @@ button {
 }
 
 .employee-card-menu .employee-card-menu-surface {
-  width: 144px;
+  width: 100%;
   height: 36px;
-  min-width: 144px;
+  min-width: calc(100% - 16px);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -6066,7 +6431,9 @@ button {
   top: calc(100% + 4px);
   right: 0;
   z-index: 30;
-  width: 220px;
+  width: max-content;
+  min-width: 220px;
+  max-width: calc(100vw - 32px);
   height: 156px;
   display: flex;
   flex-direction: column;
@@ -6093,7 +6460,8 @@ button {
 }
 
 .skills-popover-item {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   height: 36px;
   min-height: 36px;
   display: flex;
@@ -6105,7 +6473,8 @@ button {
 }
 
 .skills-popover-item-surface {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   height: 36px;
   min-height: 36px;
   display: flex;
@@ -6120,12 +6489,11 @@ button {
 
 .skills-popover-item-surface span:first-child {
   flex: 1 1 auto;
-  min-width: 0;
+  min-width: max-content;
   font-size: 14px;
   font-weight: 400;
   line-height: 20px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
   white-space: nowrap;
 }
 
@@ -6152,7 +6520,9 @@ button {
   top: calc(100% + 4px);
   right: 0;
   z-index: 30;
-  width: 320px;
+  width: max-content;
+  min-width: 320px;
+  max-width: calc(100vw - 32px);
   height: 144px;
   display: flex;
   flex-direction: column;
@@ -6175,7 +6545,8 @@ button {
 }
 
 .skills-add-option {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   height: 56px;
   min-height: 56px;
   display: flex;
@@ -6195,9 +6566,9 @@ button {
 }
 
 .skills-add-option-surface {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   height: 56px;
-  min-width: 0;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -6223,9 +6594,10 @@ button {
 }
 
 .skills-add-option-copy {
-  min-width: 0;
+  width: max-content;
+  min-width: max-content;
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   flex-direction: column;
   gap: 2px;
   text-align: left;
@@ -6619,12 +6991,14 @@ button {
 }
 
 .platform-section-action {
-  width: 76px;
+  width: auto;
+  min-width: 0;
   height: 20px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
+  padding: 0;
   color: #666666;
   --stroke-0: #666666;
   cursor: pointer;
@@ -6779,7 +7153,7 @@ button {
   justify-content: flex-start;
   gap: 8px;
   padding: 12px;
-  background: #ffffff;
+  background: #f9f9f9;
   border-radius: 8px;
   cursor: pointer;
 }

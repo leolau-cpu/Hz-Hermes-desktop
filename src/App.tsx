@@ -24,8 +24,19 @@ import arrowUpIcon from './assets/figma-icons/arrow-up.svg?raw'
 import botMessageSquareIcon from './assets/figma-icons/bot-message-square.svg?raw'
 import chevronDownIcon from './assets/figma-icons/chevron-down.svg?raw'
 import circleGaugeIcon from './assets/figma-icons/circle-gauge.svg?raw'
+import composerEmployeeIcon from './assets/composer/composer-employee.svg?raw'
+import composerAddFileIcon from './assets/composer-popover/add-file.svg?raw'
+import composerAddFolderIcon from './assets/composer-popover/add-folder.svg?raw'
+import composerAddImageIcon from './assets/composer-popover/add-image.svg?raw'
+import composerPermissionDefaultIcon from './assets/composer-popover/permission-default.svg?raw'
+import composerPermissionFullIcon from './assets/composer-popover/permission-full.svg?raw'
+import composerPermissionReviewIcon from './assets/composer-popover/permission-review.svg?raw'
+import composerSnippetIcon from './assets/composer-popover/snippet.svg?raw'
+import composerSnippetCodeReviewIcon from './assets/composer-popover/snippet-code-review.svg?raw'
+import composerSnippetExplainIcon from './assets/composer-popover/snippet-explain.svg?raw'
+import composerSnippetPlanIcon from './assets/composer-popover/snippet-plan.svg?raw'
+import composerSkillIcon from './assets/composer/composer-skill.svg?raw'
 import ellipsisIcon from './assets/figma-icons/ellipsis.svg?raw'
-import handIcon from './assets/figma-icons/hand.svg?raw'
 import layoutGridIcon from './assets/figma-icons/layout-grid.svg?raw'
 import libraryBigIcon from './assets/figma-icons/library-big.svg?raw'
 import messageCirclePlusIcon from './assets/figma-icons/message-circle-plus.svg?raw'
@@ -152,6 +163,239 @@ type AppView = 'chat' | 'message-platform' | 'skills' | 'scheduled-tasks' | 'fil
 type SettingsSection = 'model' | 'chat' | 'appearance' | 'memory' | 'gateway' | 'api-key' | 'archive' | 'about' | 'account'
 type AboutUpdateStatus = 'idle' | 'checking' | 'available' | 'downloading' | 'completed'
 type LegalAgreementType = 'user' | 'privacy'
+
+const FLOATING_POPOVER_VIEWPORT_MARGIN = 24
+const FLOATING_POPOVER_GAP = 4
+const FLOATING_POPOVER_MIN_HEIGHT = 36
+
+function useFloatingPopoverPlacement(
+  isOpen: boolean,
+  anchorRef: { current: HTMLElement | null },
+  popoverRef: { current: HTMLElement | null },
+  deps: unknown[] = [],
+) {
+  const [style, setStyle] = useState<CSSProperties>({})
+
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setStyle({})
+      return undefined
+    }
+
+    let frame = 0
+    const updatePlacement = () => {
+      const anchor = anchorRef.current
+      const popover = popoverRef.current
+
+      if (!anchor || !popover) {
+        return
+      }
+
+      const anchorRect = anchor.getBoundingClientRect()
+      const viewportHeight = window.innerHeight
+      const desiredHeight = Math.ceil(popover.scrollHeight || popover.getBoundingClientRect().height)
+      const availableBelow = Math.max(
+        FLOATING_POPOVER_MIN_HEIGHT,
+        viewportHeight - anchorRect.bottom - FLOATING_POPOVER_GAP - FLOATING_POPOVER_VIEWPORT_MARGIN,
+      )
+      const availableAbove = Math.max(
+        FLOATING_POPOVER_MIN_HEIGHT,
+        anchorRect.top - FLOATING_POPOVER_GAP - FLOATING_POPOVER_VIEWPORT_MARGIN,
+      )
+      const shouldOpenDown = desiredHeight <= availableBelow || availableBelow >= availableAbove
+      const maxHeight = Math.floor(shouldOpenDown ? availableBelow : availableAbove)
+
+      setStyle({
+        top: shouldOpenDown ? `calc(100% + ${FLOATING_POPOVER_GAP}px)` : 'auto',
+        bottom: shouldOpenDown ? 'auto' : `calc(100% + ${FLOATING_POPOVER_GAP}px)`,
+        maxHeight: `${Math.max(FLOATING_POPOVER_MIN_HEIGHT, maxHeight)}px`,
+        overflowY: desiredHeight > maxHeight ? 'auto' : undefined,
+      })
+    }
+    const scheduleUpdate = () => {
+      window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(updatePlacement)
+    }
+
+    updatePlacement()
+    window.addEventListener('resize', scheduleUpdate)
+    window.addEventListener('scroll', scheduleUpdate, true)
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('resize', scheduleUpdate)
+      window.removeEventListener('scroll', scheduleUpdate, true)
+    }
+  }, [isOpen, anchorRef, popoverRef, ...deps])
+
+  return style
+}
+
+function useFixedFloatingPopoverPlacement(
+  isOpen: boolean,
+  anchorRef: { current: HTMLElement | null },
+  popoverRef: { current: HTMLElement | null },
+  align: 'left' | 'right' = 'right',
+  deps: unknown[] = [],
+) {
+  const [style, setStyle] = useState<CSSProperties>({ visibility: 'hidden' })
+
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setStyle({ visibility: 'hidden' })
+      return undefined
+    }
+
+    let frame = 0
+    const updatePlacement = () => {
+      const anchor = anchorRef.current
+      const popover = popoverRef.current
+
+      if (!anchor || !popover) {
+        return
+      }
+
+      const anchorRect = anchor.getBoundingClientRect()
+      const popoverRect = popover.getBoundingClientRect()
+      const desiredHeight = Math.ceil(popover.scrollHeight || popoverRect.height)
+      const desiredWidth = Math.ceil(popover.scrollWidth || popoverRect.width || anchorRect.width)
+      const viewportWidth = window.innerWidth
+      const viewportHeight = window.innerHeight
+      const availableBelow = Math.max(
+        FLOATING_POPOVER_MIN_HEIGHT,
+        viewportHeight - anchorRect.bottom - FLOATING_POPOVER_GAP - FLOATING_POPOVER_VIEWPORT_MARGIN,
+      )
+      const availableAbove = Math.max(
+        FLOATING_POPOVER_MIN_HEIGHT,
+        anchorRect.top - FLOATING_POPOVER_GAP - FLOATING_POPOVER_VIEWPORT_MARGIN,
+      )
+      const shouldOpenDown = desiredHeight <= availableBelow || availableBelow >= availableAbove
+      const maxHeight = Math.floor(shouldOpenDown ? availableBelow : availableAbove)
+      const renderedHeight = Math.min(desiredHeight, maxHeight)
+      const maxLeft = Math.max(
+        FLOATING_POPOVER_VIEWPORT_MARGIN,
+        viewportWidth - FLOATING_POPOVER_VIEWPORT_MARGIN - desiredWidth,
+      )
+      const desiredLeft = align === 'left' ? anchorRect.left : anchorRect.right - desiredWidth
+      const left = Math.min(maxLeft, Math.max(FLOATING_POPOVER_VIEWPORT_MARGIN, desiredLeft))
+      const top = shouldOpenDown
+        ? Math.min(
+            anchorRect.bottom + FLOATING_POPOVER_GAP,
+            viewportHeight - FLOATING_POPOVER_VIEWPORT_MARGIN - renderedHeight,
+          )
+        : Math.max(
+            FLOATING_POPOVER_VIEWPORT_MARGIN,
+            anchorRect.top - FLOATING_POPOVER_GAP - renderedHeight,
+          )
+
+      setStyle({
+        position: 'fixed',
+        top: `${Math.round(top)}px`,
+        left: `${Math.round(left)}px`,
+        maxHeight: `${Math.max(FLOATING_POPOVER_MIN_HEIGHT, maxHeight)}px`,
+        overflowY: desiredHeight > maxHeight ? 'auto' : undefined,
+        visibility: 'visible',
+      })
+    }
+    const scheduleUpdate = () => {
+      window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(updatePlacement)
+    }
+
+    updatePlacement()
+    window.addEventListener('resize', scheduleUpdate)
+    window.addEventListener('scroll', scheduleUpdate, true)
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('resize', scheduleUpdate)
+      window.removeEventListener('scroll', scheduleUpdate, true)
+    }
+  }, [isOpen, anchorRef, popoverRef, align, ...deps])
+
+  return style
+}
+
+function useFixedSidePopoverPlacement(
+  isOpen: boolean,
+  anchorRef: { current: HTMLElement | null },
+  popoverRef: { current: HTMLElement | null },
+  deps: unknown[] = [],
+) {
+  const [style, setStyle] = useState<CSSProperties>({ visibility: 'hidden' })
+
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setStyle({ visibility: 'hidden' })
+      return undefined
+    }
+
+    let frame = 0
+    const updatePlacement = () => {
+      const anchor = anchorRef.current
+      const popover = popoverRef.current
+
+      if (!anchor || !popover) {
+        return
+      }
+
+      const anchorRect = anchor.getBoundingClientRect()
+      const popoverRect = popover.getBoundingClientRect()
+      const desiredHeight = Math.ceil(popover.scrollHeight || popoverRect.height)
+      const desiredWidth = Math.ceil(popover.scrollWidth || popoverRect.width || anchorRect.width)
+      const viewportWidth = window.innerWidth
+      const viewportHeight = window.innerHeight
+      const sideGap = 0
+      const availableRight =
+        viewportWidth - anchorRect.right - sideGap - FLOATING_POPOVER_VIEWPORT_MARGIN
+      const availableLeft = anchorRect.left - sideGap - FLOATING_POPOVER_VIEWPORT_MARGIN
+      const shouldOpenRight = desiredWidth <= availableRight || availableRight >= availableLeft
+      const left = shouldOpenRight
+        ? Math.min(
+            viewportWidth - FLOATING_POPOVER_VIEWPORT_MARGIN - desiredWidth,
+            anchorRect.right + sideGap,
+          )
+        : Math.max(
+            FLOATING_POPOVER_VIEWPORT_MARGIN,
+            anchorRect.left - sideGap - desiredWidth,
+          )
+      const maxHeight = Math.max(
+        FLOATING_POPOVER_MIN_HEIGHT,
+        viewportHeight - FLOATING_POPOVER_VIEWPORT_MARGIN * 2,
+      )
+      const renderedHeight = Math.min(desiredHeight, maxHeight)
+      const top = Math.min(
+        viewportHeight - FLOATING_POPOVER_VIEWPORT_MARGIN - renderedHeight,
+        Math.max(FLOATING_POPOVER_VIEWPORT_MARGIN, anchorRect.bottom - renderedHeight),
+      )
+
+      setStyle({
+        position: 'fixed',
+        top: `${Math.round(top)}px`,
+        left: `${Math.round(left)}px`,
+        maxHeight: `${Math.max(FLOATING_POPOVER_MIN_HEIGHT, maxHeight)}px`,
+        overflowY: desiredHeight > maxHeight ? 'auto' : undefined,
+        visibility: 'visible',
+      })
+    }
+    const scheduleUpdate = () => {
+      window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(updatePlacement)
+    }
+
+    updatePlacement()
+    window.addEventListener('resize', scheduleUpdate)
+    window.addEventListener('scroll', scheduleUpdate, true)
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('resize', scheduleUpdate)
+      window.removeEventListener('scroll', scheduleUpdate, true)
+    }
+  }, [isOpen, anchorRef, popoverRef, ...deps])
+
+  return style
+}
 
 type ScheduledTask = {
   id: string
@@ -880,6 +1124,9 @@ const settingsPageConfigs: Record<VisibleSettingsSection, SettingsPageConfig> = 
 const englishTextEntries = [
   ['新对话', 'New Chat'],
   ['搜索对话', 'Search Chats'],
+  ['近期对话', 'Recent chats'],
+  ['近期无对话', 'No recent chats'],
+  ['无搜索结果', 'No results'],
   ['消息平台', 'Messaging Platforms'],
   ['技能', 'Skills'],
   ['员工', 'Employees'],
@@ -920,9 +1167,50 @@ const englishTextEntries = [
   ['重置成功', 'Reset successfully'],
   ['你还未输入凭证', 'Credentials are required'],
   ['凭证错误', 'Invalid credentials'],
+  ['在钉钉开发者后台创建一个应用，将ClientID (App key) 和 Client Secret 复制到这里。', 'Create an app in the DingTalk developer console, then paste the ClientID (App key) and Client Secret here.'],
+  ['创建一个飞书/Lark应用，将App ID 和 App Secret 复制到这里。', 'Create a Feishu/Lark app, then paste the App ID and App Secret here.'],
+  ['在企业微信中添加机器人，将 Bot ID 和 Secret 复制到这里。', 'Add a bot in WeCom, then paste the Bot ID and Secret here.'],
+  ['在 QQ 开放平台注册一个应用，将 App ID 和 App Secret 复制到这里。', 'Register an app on the QQ Open Platform, then paste the App ID and App Secret here.'],
+  ['创建一个API服务应用，将App ID 和 App Secret 复制到这里。', 'Create an API Service app, then paste the App ID and App Secret here.'],
+  ['创建一个WebhooK应用，将App ID 和 App Secret 复制到这里。', 'Create a Webhook app, then paste the App ID and App Secret here.'],
+  ['创建一个腾讯元宝应用，将App ID 和 App Secret 复制到这里。', 'Create a Tencent Yuanbao app, then paste the App ID and App Secret here.'],
+  ['创建一个Telegram应用，将App ID 和 App Secret 复制到这里。', 'Create a Telegram app, then paste the App ID and App Secret here.'],
+  ['创建一个Discord应用，将App ID 和 App Secret 复制到这里。', 'Create a Discord app, then paste the App ID and App Secret here.'],
   ['输入钉钉客户端ID', 'Enter DingTalk client ID'],
   ['输入钉钉客户端密钥', 'Enter DingTalk client secret'],
-  ['打开微信 扫码连接', 'Open WeChat and scan to connect'],
+  ['输入企业微信客户端ID', 'Enter WeCom client ID'],
+  ['输入企业微信客户端Secret', 'Enter WeCom client secret'],
+  ['输入QQ客户端ID', 'Enter QQ client ID'],
+  ['输入QQ机器人客户端Secret', 'Enter QQ bot client secret'],
+  ['输入API服务客户端ID', 'Enter API Service client ID'],
+  ['输入API服务客户端Secret', 'Enter API Service client secret'],
+  ['输入WebhooK客户端ID', 'Enter Webhook client ID'],
+  ['输入WebhooK客户端Secret', 'Enter Webhook client secret'],
+  ['输入腾讯元宝客户端ID', 'Enter Tencent Yuanbao client ID'],
+  ['输入腾讯元宝客户端Secret', 'Enter Tencent Yuanbao client secret'],
+  ['输入Telegram客户端ID', 'Enter Telegram client ID'],
+  ['输入Telegram客户端Secret', 'Enter Telegram client secret'],
+  ['输入Discord客户端ID', 'Enter Discord client ID'],
+  ['输入Discord客户端Secret', 'Enter Discord client secret'],
+  ['已保存:sk-h...slAz', 'Saved: sk-h...slAz'],
+  ['已保存:ww-sec...9xK2', 'Saved: ww-sec...9xK2'],
+  ['已保存:qq-sec...7bQp', 'Saved: qq-sec...7bQp'],
+  ['已保存:api-sec...4kY8', 'Saved: api-sec...4kY8'],
+  ['已保存:webhook-sec...6mC2', 'Saved: webhook-sec...6mC2'],
+  ['已保存:yuanbao-sec...8pR1', 'Saved: yuanbao-sec...8pR1'],
+  ['已保存:telegram-sec...5nT7', 'Saved: telegram-sec...5nT7'],
+  ['已保存:discord-sec...3dL9', 'Saved: discord-sec...3dL9'],
+  ['关闭钉钉', 'Disable DingTalk'],
+  ['开启钉钉', 'Enable DingTalk'],
+  ['扫码获取凭证', 'Scan to get credentials'],
+  ['点击刷新二维码', 'Click to refresh QR code'],
+  ['模拟二维码过期', 'Simulate QR code expiration'],
+  ['点击刷新', 'Refresh'],
+  ['使用钉钉扫码，并在手机上确认', 'Scan with DingTalk and confirm on your phone'],
+  ['登录成功后自动写入WECHAT_CLAW_ACCOUNT_ID与WECHAT_CLAW_TOKEN，无需手动配置。', 'After login succeeds, WECHAT_CLAW_ACCOUNT_ID and WECHAT_CLAW_TOKEN will be written automatically. No manual setup is required.'],
+  ['这是iLink分配给你本次扫码的BotID，不是你的真实微信号(iLink设计上不暴露昵称)。切换账号请点上方[扫码登录」用另一个微信重扫即可覆盖。', 'This is the BotID iLink assigned for this scan, not your real WeChat ID. iLink does not expose nicknames by design. To switch accounts, scan again with another WeChat account to overwrite it.'],
+  ['当前先完成钉钉功能，其他平台后续按设计稿继续补齐。', 'DingTalk is implemented first. Other platforms will be completed according to the design later.'],
+  ['打开微信 扫码连接', 'WeChat Scan Connect'],
   ['断开连接', 'Disconnect'],
   ['已连接微信', 'WeChat connected'],
   ['登录成功', 'Login successful'],
@@ -953,6 +1241,76 @@ const englishTextEntries = [
   ['更替关键词再试试', 'Try a different keyword'],
   ['去对话', 'Chat'],
   ['去使用', 'Use'],
+  ['停用技能', 'Disable skill'],
+  ['技能更多操作', 'More skill actions'],
+  ['员工更多操作', 'More employee actions'],
+  ['技能列表', 'Skill list'],
+  ['员工列表', 'Employee list'],
+  ['技能筛选工具栏', 'Skill filter toolbar'],
+  ['卡片视图', 'Card view'],
+  ['列表视图', 'List view'],
+  ['ACUI桌面悬浮窗', 'ACUI Desktop Floating Window'],
+  ['轻量级桌面展示技能，把客户的产品、数据或品牌内容悬浮在用户桌面右下角。', 'A lightweight desktop display skill that floats customer product, data, or brand content in the lower-right corner.'],
+  ['Airtable数据管理', 'Airtable Data Management'],
+  ['用 RESTAPI 操作 Airtable: 增删改查、筛选、更新插入。', 'Use REST APIs to operate Airtable: create, read, update, delete, filter, and upsert records.'],
+  ['Apple备忘录', 'Apple Notes'],
+  ['用 memoCLI 管理 Apple 备忘录:创建、搜索、编辑。', 'Use memoCLI to manage Apple Notes: create, search, and edit notes.'],
+  ['Apple提醒事项', 'Apple Reminders'],
+  ['用 remindctl 管理提醒事项:添加、列出、完成。', 'Use remindctl to manage reminders: add, list, and complete items.'],
+  ['架构图生成', 'Architecture Diagram Generator'],
+  ['生成深色 SVG 架构/云/基础设施图 (HTML)0', 'Generate dark SVG architecture, cloud, or infrastructure diagrams (HTML).'],
+  ['arXiv 论文检索', 'arXiv Paper Search'],
+  ['按关键词/作者/分类/ ID 检索 arXiv 论文。', 'Search arXiv papers by keyword, author, category, or ID.'],
+  ['字符画生成', 'ASCII Art Generator'],
+  ['字符画: pyfiglet、cowsay、boxes、图片转字符。', 'ASCII art: pyfiglet, cowsay, boxes, and image-to-text conversion.'],
+  ['字符视频生成', 'ASCII Video Generator'],
+  ['字符视频:视频/音频转彩色字符 MP4/GIF。', 'ASCII video: convert video or audio into colored character MP4/GIF output.'],
+  ['AudioCraft音频生成', 'AudioCraft Audio Generator'],
+  ['AudioCraft:MusicGen 文生音乐、AudioGen 文生音效。', 'AudioCraft: MusicGen text-to-music and AudioGen text-to-sound effects.'],
+  ['信息图生成', 'Infographic Generator'],
+  ['信息图:21种风格x21种布局(可视化)。', 'Infographics: 21 styles by 21 visual layouts.'],
+  ['博客与RSS监控', 'Blog and RSS Monitor'],
+  ['监控博客与RSS/Atom订阅源。', 'Monitor blogs and RSS/Atom feeds.'],
+  ['Claude Code编程助手', 'Claude Code Programming Assistant'],
+  ['委托 Claude Code CLI编程(开发功能、提PR)。', 'Delegate programming to Claude Code CLI for feature development and PRs.'],
+  ['HTML设计原型', 'HTML Design Prototype'],
+  ['设计一次性HTML作品(落地页、幻灯、原型)。', 'Design one-off HTML works such as landing pages, slides, and prototypes.'],
+  ['代码库检查用', 'Codebase Inspection'],
+  ['pygount检查代码库:行数、语言、占比。', 'Use pygount to inspect codebases: line counts, languages, and proportions.'],
+  ['Codex编程助手', 'Codex Programming Assistant'],
+  ['委托OpenAI Codex CLI编程(开发功能、提PR)。', 'Delegate programming to OpenAI Codex CLI for feature development and PRs.'],
+  ['GEO快捷入口', 'GEO Quick Launch'],
+  ['快速启动GEO检测，支持表单快速检测或5路并行专业审计，完成后生成可视化仪表盘。', 'Quickly start GEO checks with form-based quick tests or five parallel professional audits, then generate a visual dashboard.'],
+  ['GEO全站审计', 'GEO Full-site Audit'],
+  ['一键扫描整个网站，给出AI搜索综合评分和按优先级排列的改进清单。', 'Scan an entire website in one click, then provide an AI search score and prioritized improvement list.'],
+  ['AI可引用度评分', 'AI Citation Score'],
+  ['逐段分析网页内容，评估被AI引用摘录的概率，并给出具体改写建议。', 'Analyze page content paragraph by paragraph, estimate AI citation likelihood, and provide rewrite suggestions.'],
+  ['GEO内容质量评估', 'GEO Content Quality Evaluation'],
+  ['从经验、专业度、权威性、可信度四个维度深度评估内容质量，并对比竞品找出差距。', 'Evaluate content quality across experience, expertise, authority, and trust, then compare competitors to find gaps.'],
+  ['GEO 技术审计', 'GEO Technical Audit'],
+  ['深度检查网站的爬取、索引、安全、性能、服务端渲染等9大技术维度，找出影响AI可见度的技术障碍。', 'Deeply inspect nine technical dimensions such as crawling, indexing, security, performance, and SSR to find AI visibility blockers.'],
+  ['Schema结构化数据', 'Schema Structured Data'],
+  ['检测、验证并生成Schema.org结构化数据，帮助AI系统正确识别你的品牌实体和跨平台身份。', 'Detect, validate, and generate Schema.org structured data so AI systems can identify your brand entity and cross-platform identity.'],
+  ['AI爬虫访问分析', 'AI Crawler Access Analysis'],
+  ['检查网站是否无意中屏蔽了AI爬虫，并提供修复建议。', 'Check whether the site accidentally blocks AI crawlers and provide fixes.'],
+  ['llms.txt生成校验', 'llms.txt Generator and Validator'],
+  ['创建或校验llms.txt文件，主动告诉AI系统你的网站是做什么的、哪些页面最重要。', 'Create or validate llms.txt files to tell AI systems what your site does and which pages matter most.'],
+  ['AI平台优化', 'AI Platform Optimization'],
+  ['针对 DeepSeek、豆包、通义千问、Kimi等平台逐一评估并给出定制优化方案。', 'Evaluate platforms such as DeepSeek, Doubao, Tongyi Qianwen, and Kimi, then provide tailored optimization plans.'],
+  ['品牌提及扫描', 'Brand Mention Scan'],
+  ['检测你的品牌在AI信任的平台上的存在度和权威性。', 'Check your brand presence and authority on AI-trusted platforms.'],
+  ['GEO客户报告', 'GEO Client Report'],
+  ['将所有审计结果汇总为一份面向企业决策者的专业综合报告，技术发现翻译成商业语言。', 'Summarize all audit findings into a professional report for business decision-makers, translating technical findings into business language.'],
+  ['GEO 报告 PDF', 'GEO Report PDF'],
+  ['将审计报告转换为带封面、彩色评分表和严重性标签的精美PDF，适合直接发送给客户。', 'Convert audit reports into polished PDFs with covers, color scorecards, and severity labels, ready to send to clients.'],
+  ['GEO月度对比报告', 'GEO Monthly Comparison Report'],
+  ['对比两次审计结果，生成带进度条和趋势箭头的月度改进报告，方便向客户展示成果。', 'Compare two audits and generate a monthly improvement report with progress bars and trend arrows for client updates.'],
+  ['GEO 服务提案', 'GEO Service Proposal'],
+  ['根据审计数据自动生成面向客户的三档服务报价方案，包含ROI预估和6个月路线图。', 'Generate three-tier client service proposals from audit data, including ROI estimates and a six-month roadmap.'],
+  ['GEO客户管理', 'GEO Client Management'],
+  ['轻量级CRM，跟踪GEO业务客户从线索到签约的完整销售管道，管理审计历史和沟通记录。', 'A lightweight CRM for tracking GEO clients from lead to contract while managing audit history and communications.'],
+  ['地图与路线查询', 'Map and Route Lookup'],
+  ['基于OpenStreetMap的免费工具，支持地理编码、周边设施搜索、距离计算、路线导航和时区查询。', 'A free OpenStreetMap-based tool for geocoding, nearby search, distance calculation, routing, and time zone lookup.'],
   ['停用员工', 'Disable employee'],
   ['停用员工？', 'Disable employee?'],
   ['若停用，相关的历史对话、远程连接等信息都将被删除，该操作不可逆', 'Disabling will delete related chat history and remote connections. This cannot be undone.'],
@@ -1035,6 +1393,7 @@ const englishTextEntries = [
   ['用户档案', 'User Profile'],
   ['本地网关', 'Local Gateway'],
   ['远程网关', 'Remote Gateway'],
+  ['在线', 'Online'],
   ['在localhost上启动一个私有的Hermes仪表盘后端。这是默认设置，可离线运行。', 'Start a private Hermes dashboard backend on localhost. This is the default and works offline.'],
   ['使用会话令牌将此桌面壳连接到远程Hermes仪表盘后端。', 'Use a session token to connect this desktop shell to a remote Hermes dashboard backend.'],
   ['远程URL', 'Remote URL'],
@@ -1043,8 +1402,8 @@ const englishTextEntries = [
   ['用于REST和WebSocket访问的仪表盘会话令牌。留空可保留已保存的令牌。', 'Dashboard session token for REST and WebSocket access. Leave blank to keep the saved token.'],
   ['粘贴会话令牌', 'Paste session token'],
   ['测试', 'Test'],
-  ['保存下次重启', 'Save for Next Restart'],
-  ['保存并重连', 'Save and Reconnect'],
+  ['保存下次重启', 'Save for Restart'],
+  ['保存并重连', 'Save & Reconnect'],
   ['模型厂商', 'Model Vendor'],
   ['词元工场', 'Token Workshop'],
   ['当前 Key 来自词元工场', 'Current key comes from Token Workshop'],
@@ -1285,9 +1644,10 @@ function useGlobalEnglishTranslation(isEnglish: boolean) {
 }
 
 const COMPOSER_MIN_HEIGHT = 112
+const COMPOSER_MAX_HEIGHT = 260
 const COMPOSER_TOOLBAR_HEIGHT = 56
 const COMPOSER_INPUT_TOP_INSET = 16
-const COMPOSER_BOTTOM_SAFE_SPACE = 128
+const COMPOSER_BOTTOM_SAFE_SPACE = 48
 const TITLE_DOCK_SCROLL_THRESHOLD = 48
 
 const hasReachedTitleDockThreshold = (scrollTop: number) =>
@@ -1380,12 +1740,24 @@ function formatConversationTime(createdAt: number, now: number) {
   return `${Math.floor(elapsedWeeks / 52)}年前`
 }
 
-function FigmaIcon({ icon }: { icon: string }) {
+function resolveCurrentColorIcon(icon: string) {
+  return icon
+    .replace(
+      /\b(stroke|fill)=["'](?:black|#000|#000000|var\(--(?:stroke|fill)-\d+,\s*#[0-9a-fA-F]{3,6}\))["']/gi,
+      '$1="currentColor"',
+    )
+    .replace(
+      /\b(stroke|fill)=["']var\(--(?:stroke|fill)-\d+,\s*currentColor\)["']/gi,
+      '$1="currentColor"',
+    )
+}
+
+function FigmaIcon({ icon, inheritColor = false }: { icon: string; inheritColor?: boolean }) {
   return (
     <i
       className="figma-icon"
       aria-hidden="true"
-      dangerouslySetInnerHTML={{ __html: icon }}
+      dangerouslySetInnerHTML={{ __html: inheritColor ? resolveCurrentColorIcon(icon) : icon }}
     />
   )
 }
@@ -3027,11 +3399,13 @@ function SkillsPage({
   onTitleDockedChange,
   activeSkillsSection,
   onActiveSkillsSectionChange,
+  language,
 }: {
   onStartChat: () => void
   onTitleDockedChange: (isDocked: boolean) => void
   activeSkillsSection: 'skills' | 'employees'
   onActiveSkillsSectionChange: (section: 'skills' | 'employees') => void
+  language: '中文' | 'English'
 }) {
   const [searchValue, setSearchValue] = useState('')
   const [skillsViewMode, setSkillsViewMode] = useState<'grid' | 'list'>('grid')
@@ -3064,6 +3438,24 @@ function SkillsPage({
   const filterMenuRef = useRef<HTMLDivElement | null>(null)
   const employeeMenuRef = useRef<HTMLDivElement | null>(null)
   const skillMenuRef = useRef<HTMLDivElement | null>(null)
+  const addPopoverRef = useRef<HTMLDivElement | null>(null)
+  const filterPopoverRef = useRef<HTMLDivElement | null>(null)
+  const employeePopoverRef = useRef<HTMLDivElement | null>(null)
+  const skillPopoverRef = useRef<HTMLDivElement | null>(null)
+  const addPopoverStyle = useFloatingPopoverPlacement(isAddMenuOpen, addMenuRef, addPopoverRef)
+  const filterPopoverStyle = useFloatingPopoverPlacement(isFilterOpen, filterMenuRef, filterPopoverRef)
+  const employeePopoverStyle = useFloatingPopoverPlacement(
+    Boolean(openEmployeeMenuTitle),
+    employeeMenuRef,
+    employeePopoverRef,
+    [openEmployeeMenuTitle],
+  )
+  const skillPopoverStyle = useFloatingPopoverPlacement(
+    Boolean(openSkillMenuTitle),
+    skillMenuRef,
+    skillPopoverRef,
+    [openSkillMenuTitle],
+  )
   const normalizedSearch = searchValue.trim().toLowerCase()
   const filteredSkills = normalizedSearch
     ? skillItems.filter(
@@ -3425,8 +3817,12 @@ function SkillsPage({
             </div>
             <p>
               {isEmployeesSection
-                ? `已启用员工${enabledEmployeeCount}个，共${employeeItems.length}个`
-                : `已启用技能${enabledCount}个，共${skillItems.length}个`}
+                ? language === 'English'
+                  ? `${enabledEmployeeCount} employees enabled, ${employeeItems.length} total`
+                  : `已启用员工${enabledEmployeeCount}个，共${employeeItems.length}个`
+                : language === 'English'
+                  ? `${enabledCount} skills enabled, ${skillItems.length} total`
+                  : `已启用技能${enabledCount}个，共${skillItems.length}个`}
             </p>
           </div>
         </div>
@@ -3507,7 +3903,13 @@ function SkillsPage({
                         <FigmaIcon icon={listFilterIcon} />
                       </button>
                       {isFilterOpen ? (
-                        <div className="skills-filter-popover" role="menu" aria-label="来源筛选">
+                        <div
+                          className="skills-filter-popover"
+                          ref={filterPopoverRef}
+                          role="menu"
+                          aria-label="来源筛选"
+                          style={filterPopoverStyle}
+                        >
                           <div className="skills-popover-label">来源筛选</div>
                           {['全部来源', '内置技能', '自定义'].map((source) => (
                             <button
@@ -3588,7 +3990,13 @@ function SkillsPage({
                       <FigmaIcon icon={plusIcon} />
                     </button>
                     {isAddMenuOpen ? (
-                      <div className="skills-add-popover" role="menu" aria-label="添加技能">
+                      <div
+                        className="skills-add-popover"
+                        ref={addPopoverRef}
+                        role="menu"
+                        aria-label="添加技能"
+                        style={addPopoverStyle}
+                      >
                         <div className="skills-add-popover-items">
                           <button
                             className="skills-add-option"
@@ -3682,7 +4090,7 @@ function SkillsPage({
                         ) : null}
                         {isEmployeeDisabled ? (
                           <button
-                            className="employee-card-action"
+                            className="employee-card-action employee-card-action-add"
                             type="button"
                             aria-label={`添加${employee.title}`}
                             onClick={() =>
@@ -3714,7 +4122,13 @@ function SkillsPage({
                               <FigmaIcon icon={ellipsisIcon} />
                             </button>
                             {openEmployeeMenuTitle === employee.title ? (
-                              <div className="scheduled-task-menu employee-card-menu" role="menu" aria-label="员工更多操作">
+                              <div
+                                className="scheduled-task-menu employee-card-menu"
+                                ref={employeePopoverRef}
+                                role="menu"
+                                aria-label="员工更多操作"
+                                style={employeePopoverStyle}
+                              >
                                 <button
                                   type="button"
                                   role="menuitem"
@@ -3777,7 +4191,7 @@ function SkillsPage({
                         ) : null}
                         {isSkillDisabled ? (
                           <button
-                            className="employee-card-action"
+                            className="employee-card-action employee-card-action-add"
                             type="button"
                             aria-label={`添加${skill.title}`}
                             onClick={() =>
@@ -3809,7 +4223,13 @@ function SkillsPage({
                               <FigmaIcon icon={ellipsisIcon} />
                             </button>
                             {openSkillMenuTitle === skill.title ? (
-                              <div className="scheduled-task-menu employee-card-menu" role="menu" aria-label="技能更多操作">
+                              <div
+                                className="scheduled-task-menu employee-card-menu"
+                                ref={skillPopoverRef}
+                                role="menu"
+                                aria-label="技能更多操作"
+                                style={skillPopoverStyle}
+                              >
                                 <button
                                   type="button"
                                   role="menuitem"
@@ -3912,6 +4332,15 @@ function ScheduledTasksPage({
   const scheduledPageRef = useRef<HTMLElement | null>(null)
   const createMenuRef = useRef<HTMLDivElement | null>(null)
   const taskMenuRef = useRef<HTMLDivElement | null>(null)
+  const createPopoverRef = useRef<HTMLDivElement | null>(null)
+  const taskPopoverRef = useRef<HTMLDivElement | null>(null)
+  const createPopoverStyle = useFloatingPopoverPlacement(isCreateMenuOpen, createMenuRef, createPopoverRef)
+  const taskPopoverStyle = useFloatingPopoverPlacement(
+    Boolean(openTaskMenuId),
+    taskMenuRef,
+    taskPopoverRef,
+    [openTaskMenuId],
+  )
   const canCreateScheduledTask = scheduledTitle.trim().length > 0 && scheduledPrompt.trim().length > 0
   const enabledScheduledTaskCount = scheduledTasks.filter((task) => task.enabled).length
 
@@ -4083,7 +4512,13 @@ function ScheduledTasksPage({
                 <FigmaIcon icon={scheduledChevronDownIcon} />
               </button>
               {isCreateMenuOpen ? (
-                <div className="scheduled-create-popover" role="menu" aria-label="创建定时任务">
+                <div
+                  className="scheduled-create-popover"
+                  ref={createPopoverRef}
+                  role="menu"
+                  aria-label="创建定时任务"
+                  style={createPopoverStyle}
+                >
                   <button
                     className="scheduled-create-option"
                     type="button"
@@ -4156,7 +4591,13 @@ function ScheduledTasksPage({
                       <FigmaIcon icon={scheduledEllipsisIcon} />
                     </button>
                     {openTaskMenuId === task.id ? (
-                      <div className="scheduled-task-menu" role="menu" aria-label="任务更多操作">
+                      <div
+                        className="scheduled-task-menu"
+                        ref={taskPopoverRef}
+                        role="menu"
+                        aria-label="任务更多操作"
+                        style={taskPopoverStyle}
+                      >
                         <button type="button" role="menuitem" onClick={() => openEditDialog(task)}>
                           <span>
                             <FigmaIcon icon={scheduledSquarePenIcon} />
@@ -4321,7 +4762,6 @@ function SettingsPage({
   const config = settingsPageConfigs[visibleSection]
   const selectRows = config.selectRows ?? []
   const [openSelectMenu, setOpenSelectMenu] = useState<string | null>(null)
-  const [selectMenuMaxHeight, setSelectMenuMaxHeight] = useState(280)
   const [gatewayMode, setGatewayMode] = useState<SettingsGatewayMode>('local')
   const [gatewayRemoteUrl, setGatewayRemoteUrl] = useState('')
   const [gatewayToken, setGatewayToken] = useState('')
@@ -4365,7 +4805,18 @@ function SettingsPage({
   const selectMenuRef = useRef<HTMLDivElement | null>(null)
   const apiKeyMenuRef = useRef<HTMLDivElement | null>(null)
   const accountMenuRef = useRef<HTMLDivElement | null>(null)
+  const selectPopoverRef = useRef<HTMLDivElement | null>(null)
+  const apiKeyPopoverRef = useRef<HTMLDivElement | null>(null)
+  const accountPopoverRef = useRef<HTMLDivElement | null>(null)
   const settingsPageRef = useRef<HTMLElement | null>(null)
+  const selectPopoverStyle = useFloatingPopoverPlacement(
+    Boolean(openSelectMenu),
+    selectMenuRef,
+    selectPopoverRef,
+    [openSelectMenu],
+  )
+  const apiKeyPopoverStyle = useFloatingPopoverPlacement(isApiKeyMenuOpen, apiKeyMenuRef, apiKeyPopoverRef)
+  const accountPopoverStyle = useFloatingPopoverPlacement(isAccountMenuOpen, accountMenuRef, accountPopoverRef)
   const selectedApiKey =
     settingsApiKeyOptions.find((option) => option.label === selectedApiKeyLabel) ??
     settingsApiKeyOptions[0]
@@ -4578,9 +5029,7 @@ function SettingsPage({
     }
   }, [aboutUpdateStatus])
 
-  const toggleSelectMenu = (label: string, button: HTMLButtonElement) => {
-    const rect = button.getBoundingClientRect()
-    setSelectMenuMaxHeight(Math.max(36, Math.floor(window.innerHeight - rect.bottom - 4 - 40)))
+  const toggleSelectMenu = (label: string) => {
     setOpenSelectMenu((currentLabel) => (currentLabel === label ? null : label))
   }
 
@@ -4672,7 +5121,7 @@ function SettingsPage({
               .join(' ')}
             type="button"
             aria-expanded={isOpen}
-            onClick={(event) => toggleSelectMenu(row.label, event.currentTarget)}
+            onClick={() => toggleSelectMenu(row.label)}
           >
             <span className={isMuted ? 'muted' : ''}>{selectedValue}</span>
             <FigmaIcon icon={settingsChevronDownIcon} />
@@ -4680,10 +5129,11 @@ function SettingsPage({
           {isOpen ? (
             <div
               className="settings-select-menu"
+              ref={selectPopoverRef}
               role="menu"
               aria-label={`${row.label}选择`}
               data-translation-skip={row.label === '语言' ? 'true' : undefined}
-              style={{ maxHeight: `${selectMenuMaxHeight}px` }}
+              style={selectPopoverStyle}
             >
               {row.options.map((option) => (
                 <button
@@ -4750,6 +5200,40 @@ function SettingsPage({
     setIsGatewayTesting(true)
   }
 
+  const validateGatewayRemoteFields = () => {
+    const hasRemoteUrl = gatewayRemoteUrl.trim().length > 0
+    const hasGatewayToken = gatewayToken.trim().length > 0
+
+    if (!hasRemoteUrl && !hasGatewayToken) {
+      setSettingsToast({
+        tone: 'error',
+        message: '还未填写远程URL和会话令牌。',
+        id: Date.now(),
+      })
+      return false
+    }
+
+    if (!hasRemoteUrl) {
+      setSettingsToast({
+        tone: 'error',
+        message: '还未输入远程URL',
+        id: Date.now(),
+      })
+      return false
+    }
+
+    if (!hasGatewayToken) {
+      setSettingsToast({
+        tone: 'error',
+        message: '还未输入会话令牌',
+        id: Date.now(),
+      })
+      return false
+    }
+
+    return true
+  }
+
   const renderGatewayContent = () => (
     <div className="settings-gateway">
       <div className="settings-gateway-card-row">
@@ -4768,7 +5252,15 @@ function SettingsPage({
                 <FigmaIcon icon={card.icon} />
               </span>
               <span className="settings-gateway-card-copy">
-                <strong>{card.label}</strong>
+                <span className="settings-gateway-card-title">
+                  <strong>{card.label}</strong>
+                  {card.id === 'local' ? (
+                    <span className="settings-gateway-status-badge">
+                      <span aria-hidden="true" />
+                      <span>在线</span>
+                    </span>
+                  ) : null}
+                </span>
                 <small>{card.description}</small>
               </span>
               <span className={`settings-gateway-radio ${isSelected ? 'selected' : ''}`} />
@@ -4840,7 +5332,13 @@ function SettingsPage({
             <FigmaIcon icon={settingsChevronDownIcon} />
           </button>
           {isApiKeyMenuOpen ? (
-            <div className="settings-api-key-menu" role="menu" aria-label="API Key 选择">
+            <div
+              className="settings-api-key-menu"
+              ref={apiKeyPopoverRef}
+              role="menu"
+              aria-label="API Key 选择"
+              style={apiKeyPopoverStyle}
+            >
               {settingsApiKeyOptions.map((option) => {
                 const isSelected = option.label === selectedApiKey.label
 
@@ -5054,7 +5552,13 @@ function SettingsPage({
             <FigmaIcon icon={settingsChevronDownIcon} />
           </button>
           {isAccountMenuOpen ? (
-            <div className="settings-account-menu" role="menu" aria-label="管理账号">
+            <div
+              className="settings-account-menu"
+              ref={accountPopoverRef}
+              role="menu"
+              aria-label="管理账号"
+              style={accountPopoverStyle}
+            >
               <button
                 type="button"
                 role="menuitem"
@@ -5206,8 +5710,12 @@ function SettingsPage({
                 {isGatewayTesting ? <FigmaIcon icon={settingsLoaderCircleIcon} /> : null}
                 测试
               </button>
-              <button type="button">保存下次重启</button>
-              <button type="button">保存并重连</button>
+              <button type="button" onClick={validateGatewayRemoteFields}>
+                保存下次重启
+              </button>
+              <button type="button" onClick={validateGatewayRemoteFields}>
+                保存并重连
+              </button>
             </div>
           </div>
         </footer>
@@ -5365,8 +5873,15 @@ function FileLibraryPage({
   const [isFileNavScrolled, setIsFileNavScrolled] = useState(false)
   const [isFileMainScrolled, setIsFileMainScrolled] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
+  const menuPopoverRef = useRef<HTMLDivElement | null>(null)
   const fileMainRef = useRef<HTMLElement | null>(null)
   const fileReserveRef = useRef<HTMLDivElement | null>(null)
+  const menuPopoverStyle = useFloatingPopoverPlacement(
+    Boolean(openMenuFileId),
+    menuRef,
+    menuPopoverRef,
+    [openMenuFileId],
+  )
   const pendingFileAnchorRef = useRef<number | null>(null)
 
   const handleFileNavScroll = useCallback<UIEventHandler<HTMLElement>>((event) => {
@@ -5586,7 +6101,13 @@ function FileLibraryPage({
           <FigmaIcon icon={fileLibraryEllipsisIcon} />
         </button>
         {openMenuFileId === file.id ? (
-          <div className="file-library-menu" role="menu" aria-label={`${file.name}操作`}>
+          <div
+            className="file-library-menu"
+            ref={menuPopoverRef}
+            role="menu"
+            aria-label={`${file.name}操作`}
+            style={menuPopoverStyle}
+          >
             <button className="file-library-menu-item" type="button" role="menuitem">
               <span className="file-library-menu-surface">
                 <FigmaIcon icon={fileLibraryFolderMinusIcon} />
@@ -5833,7 +6354,9 @@ function Sidebar({
 function GlobalTitleBar({
   activeView,
   isSidebarCollapsed,
+  activeConversationId,
   activeConversationTitle,
+  activeConversationMessages,
   hasChat,
   isSkillsTitleDocked,
   activeSkillsSection,
@@ -5844,11 +6367,15 @@ function GlobalTitleBar({
   fileLibraryTitlebar,
   settingsTitlebar,
   onPlatformTitleSwitchToggle,
+  onConversationTitleRename,
+  onConversationTitleToast,
   onToggleSidebar,
 }: {
   activeView: AppView
   isSidebarCollapsed: boolean
+  activeConversationId: string
   activeConversationTitle: string
+  activeConversationMessages: ChatMessage[]
   hasChat: boolean
   isSkillsTitleDocked: boolean
   activeSkillsSection: 'skills' | 'employees'
@@ -5859,10 +6386,30 @@ function GlobalTitleBar({
   fileLibraryTitlebar: PlatformTitlebarState
   settingsTitlebar: SettingsTitlebarState
   onPlatformTitleSwitchToggle: () => void
+  onConversationTitleRename: (title: string) => void
+  onConversationTitleToast: (message: string) => void
   onToggleSidebar: () => void
 }) {
   const [isScheduledTitleCreateOpen, setIsScheduledTitleCreateOpen] = useState(false)
+  const [isConversationMenuOpen, setIsConversationMenuOpen] = useState(false)
+  const [isConversationRenameOpen, setIsConversationRenameOpen] = useState(false)
+  const [conversationRenameTitle, setConversationRenameTitle] = useState(activeConversationTitle)
   const scheduledTitleCreateRef = useRef<HTMLDivElement | null>(null)
+  const scheduledTitleCreatePopoverRef = useRef<HTMLDivElement | null>(null)
+  const conversationTitleMoreRef = useRef<HTMLButtonElement | null>(null)
+  const conversationTitlePopoverRef = useRef<HTMLDivElement | null>(null)
+  const scheduledTitleCreatePopoverStyle = useFloatingPopoverPlacement(
+    isScheduledTitleCreateOpen,
+    scheduledTitleCreateRef,
+    scheduledTitleCreatePopoverRef,
+  )
+  const conversationTitlePopoverStyle = useFixedFloatingPopoverPlacement(
+    isConversationMenuOpen,
+    conversationTitleMoreRef,
+    conversationTitlePopoverRef,
+    'left',
+    [activeConversationId, activeConversationTitle],
+  )
   const shouldShowSkillsTitleTabs = activeView === 'skills' && isSkillsTitleDocked
   const shouldShowScheduledTitleCreate = activeView === 'scheduled-tasks' && isScheduledTitleDocked
   const panelTitlebar = activeView === 'file-library' ? fileLibraryTitlebar : platformTitlebar
@@ -5919,6 +6466,42 @@ function GlobalTitleBar({
   }, [shouldShowScheduledTitleCreate])
 
   useEffect(() => {
+    if (activeView !== 'chat' || !hasChat) {
+      setIsConversationMenuOpen(false)
+      setIsConversationRenameOpen(false)
+    }
+  }, [activeView, hasChat])
+
+  useEffect(() => {
+    if (!isConversationMenuOpen) {
+      return undefined
+    }
+
+    const closeConversationMenu = (event: PointerEvent) => {
+      const target = event.target
+
+      if (!(target instanceof Node)) {
+        return
+      }
+
+      if (
+        conversationTitleMoreRef.current?.contains(target) ||
+        conversationTitlePopoverRef.current?.contains(target)
+      ) {
+        return
+      }
+
+      setIsConversationMenuOpen(false)
+    }
+
+    document.addEventListener('pointerdown', closeConversationMenu)
+
+    return () => {
+      document.removeEventListener('pointerdown', closeConversationMenu)
+    }
+  }, [isConversationMenuOpen])
+
+  useEffect(() => {
     if (!isScheduledTitleCreateOpen) {
       return undefined
     }
@@ -5948,169 +6531,336 @@ function GlobalTitleBar({
     }
   }, [isScheduledTitleCreateOpen])
 
+  const closeConversationMenuWithToast = useCallback(
+    (message: string) => {
+      setIsConversationMenuOpen(false)
+      onConversationTitleToast(message)
+    },
+    [onConversationTitleToast],
+  )
+
+  const copyConversationText = useCallback((value: string) => {
+    if (!value) {
+      return
+    }
+
+    void navigator.clipboard?.writeText(value).catch(() => undefined)
+  }, [])
+
+  const conversationMarkdown = useMemo(
+    () =>
+      activeConversationMessages
+        .map((message) => {
+          const roleLabel = message.role === 'user' ? '用户' : '助手'
+          return `### ${roleLabel}\n\n${message.content}`
+        })
+        .join('\n\n'),
+    [activeConversationMessages],
+  )
+
+  const openConversationRenameDialog = useCallback(() => {
+    setConversationRenameTitle(activeConversationTitle)
+    setIsConversationMenuOpen(false)
+    setIsConversationRenameOpen(true)
+  }, [activeConversationTitle])
+
+  const submitConversationRename = useCallback(() => {
+    const nextTitle = conversationRenameTitle.trim()
+
+    if (!nextTitle) {
+      return
+    }
+
+    onConversationTitleRename(nextTitle)
+    setIsConversationRenameOpen(false)
+  }, [conversationRenameTitle, onConversationTitleRename])
+
   return (
-    <header
-      className={globalTitlebarClassName}
-      data-tauri-drag-region
-      onPointerDown={startWindowDrag}
-    >
-      <div className="global-titlebar-left" data-tauri-drag-region>
-        {activeView === 'settings' ? null : (
-          <div className="global-titlebar-toggle-slot">
-            <SidebarToggleControl
-              label={isSidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}
-              icon={isSidebarCollapsed ? panelRightIcon : panelLeftIcon}
-              onClick={onToggleSidebar}
-            />
-          </div>
-        )}
-      </div>
-      <div
-        className={titlebarClassName}
+    <>
+      <header
+        className={globalTitlebarClassName}
         data-tauri-drag-region
-        onDoubleClick={toggleWindowMaximize}
+        onPointerDown={startWindowDrag}
       >
-        <div className="global-titlebar-content">
-          <div className="global-titlebar-primary-group">
-            {shouldShowPanelTitlebar ? (
-              <div className="global-titlebar-platform-title-group">
-                <div className="global-titlebar-platform-list-title">
-                  {!isSidebarCollapsed ? <h2>{panelListTitle}</h2> : null}
+        <div className="global-titlebar-left" data-tauri-drag-region>
+          {activeView === 'settings' ? null : (
+            <div className="global-titlebar-toggle-slot">
+              <SidebarToggleControl
+                label={isSidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}
+                icon={isSidebarCollapsed ? panelRightIcon : panelLeftIcon}
+                onClick={onToggleSidebar}
+              />
+            </div>
+          )}
+        </div>
+        <div
+          className={titlebarClassName}
+          data-tauri-drag-region
+          onDoubleClick={toggleWindowMaximize}
+        >
+          <div className="global-titlebar-content">
+            <div className="global-titlebar-primary-group">
+              {shouldShowPanelTitlebar ? (
+                <div className="global-titlebar-platform-title-group">
+                  <div className="global-titlebar-platform-list-title">
+                    {!isSidebarCollapsed ? <h2>{panelListTitle}</h2> : null}
+                  </div>
+                  <div className="global-titlebar-platform-detail-title">
+                    {panelTitlebar.isDetailDocked ? (
+                      <>
+                        {panelTitlebar.icon ? (
+                          <img className="global-titlebar-platform-detail-icon" src={panelTitlebar.icon} alt="" />
+                        ) : null}
+                        <h2>{panelTitlebar.title}</h2>
+                      </>
+                    ) : null}
+                  </div>
                 </div>
-                <div className="global-titlebar-platform-detail-title">
-                  {panelTitlebar.isDetailDocked ? (
-                    <>
-                      {panelTitlebar.icon ? (
-                        <img className="global-titlebar-platform-detail-icon" src={panelTitlebar.icon} alt="" />
-                      ) : null}
-                      <h2>{panelTitlebar.title}</h2>
-                    </>
+              ) : shouldShowTitle ? (
+                <div className="global-titlebar-title-group">
+                  <div className="global-titlebar-title-box">
+                    <div className="global-titlebar-title">
+                      {shouldShowSkillsTitleTabs ? (
+                        <>
+                          <button
+                            className={`global-titlebar-title-tab ${
+                              activeSkillsSection === 'skills' ? 'active' : ''
+                            }`}
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              onActiveSkillsSectionChange('skills')
+                            }}
+                          >
+                            技能
+                          </button>
+                          <button
+                            className={`global-titlebar-title-tab ${
+                              activeSkillsSection === 'employees' ? 'active' : ''
+                            }`}
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              onActiveSkillsSectionChange('employees')
+                            }}
+                          >
+                            员工
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <h2>{title}</h2>
+                          {skillsSubtitle ? <span className="global-titlebar-subtitle">{skillsSubtitle}</span> : null}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {activeView === 'chat' ? (
+                    <div className="global-titlebar-title-actions">
+                      <button
+                        className={`title-more-button ${isConversationMenuOpen ? 'active' : ''}`}
+                        type="button"
+                        aria-label="更多对话操作"
+                        ref={conversationTitleMoreRef}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          setIsConversationMenuOpen((isOpen) => !isOpen)
+                        }}
+                      >
+                        <FigmaIcon icon={ellipsisIcon} />
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+            {activeView === 'chat' ? (
+              <div className="global-titlebar-secondary-group">
+                <div className="global-titlebar-actions">
+                  <IconButton label="底部面板" icon={panelBottomIcon} />
+                  <IconButton label="右侧面板" icon={panelRightIcon} />
+                </div>
+              </div>
+            ) : activeView === 'message-platform' && shouldShowPanelTitlebar && panelTitlebar.isDetailDocked ? (
+              <div className="global-titlebar-platform-switch">
+                <PlatformSwitch
+                  checked={panelTitlebar.isEnabled}
+                  onClick={onPlatformTitleSwitchToggle}
+                />
+              </div>
+            ) : activeView === 'file-library' && shouldShowPanelTitlebar && panelTitlebar.isDetailDocked ? (
+              <div className="global-titlebar-file-library-actions">
+                {panelTitlebar.actions}
+              </div>
+            ) : shouldShowScheduledTitleCreate ? (
+              <div className="global-titlebar-scheduled-create">
+                <div className="scheduled-titlebar-create-anchor" ref={scheduledTitleCreateRef}>
+                  <button
+                    className={`scheduled-create-button scheduled-titlebar-create-button ${
+                      isScheduledTitleCreateOpen ? 'active' : ''
+                    }`}
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setIsScheduledTitleCreateOpen((isOpen) => !isOpen)
+                    }}
+                  >
+                    <span>创建</span>
+                    <FigmaIcon icon={scheduledChevronDownIcon} />
+                  </button>
+                  {isScheduledTitleCreateOpen ? (
+                    <div
+                      className="scheduled-create-popover scheduled-titlebar-create-popover"
+                      ref={scheduledTitleCreatePopoverRef}
+                      role="menu"
+                      aria-label="创建定时任务"
+                      style={scheduledTitleCreatePopoverStyle}
+                    >
+                      <button
+                        className="scheduled-create-option"
+                        type="button"
+                        role="menuitem"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          setIsScheduledTitleCreateOpen(false)
+                          onScheduledCreateChat()
+                        }}
+                      >
+                        <span className="scheduled-create-option-surface">
+                          <FigmaIcon icon={scheduledMessageCircleIcon} />
+                          <span>通过聊天创建</span>
+                        </span>
+                      </button>
+                      <button
+                        className="scheduled-create-option"
+                        type="button"
+                        role="menuitem"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          setIsScheduledTitleCreateOpen(false)
+                          window.dispatchEvent(new Event('scheduled-manual-create-request'))
+                        }}
+                      >
+                        <span className="scheduled-create-option-surface">
+                          <FigmaIcon icon={scheduledPenIcon} />
+                          <span>手动创建</span>
+                        </span>
+                      </button>
+                    </div>
                   ) : null}
                 </div>
               </div>
-            ) : shouldShowTitle ? (
-              <div className="global-titlebar-title-group">
-                <div className="global-titlebar-title-box">
-                  <div className="global-titlebar-title">
-                    {shouldShowSkillsTitleTabs ? (
-                      <>
-                        <button
-                          className={`global-titlebar-title-tab ${
-                            activeSkillsSection === 'skills' ? 'active' : ''
-                          }`}
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            onActiveSkillsSectionChange('skills')
-                          }}
-                        >
-                          技能
-                        </button>
-                        <button
-                          className={`global-titlebar-title-tab ${
-                            activeSkillsSection === 'employees' ? 'active' : ''
-                          }`}
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            onActiveSkillsSectionChange('employees')
-                          }}
-                        >
-                          员工
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <h2>{title}</h2>
-                        {skillsSubtitle ? <span className="global-titlebar-subtitle">{skillsSubtitle}</span> : null}
-                      </>
-                    )}
-                  </div>
-                </div>
-                {activeView === 'chat' ? (
-                  <div className="global-titlebar-title-actions">
-                    <button className="title-more-button" type="button" aria-label="更多对话操作">
-                      <FigmaIcon icon={ellipsisIcon} />
-                    </button>
-                  </div>
-                ) : null}
-              </div>
             ) : null}
           </div>
-          {activeView === 'chat' ? (
-            <div className="global-titlebar-secondary-group">
-              <div className="global-titlebar-actions">
-                <IconButton label="底部面板" icon={panelBottomIcon} />
-                <IconButton label="右侧面板" icon={panelRightIcon} />
-              </div>
-            </div>
-          ) : activeView === 'message-platform' && shouldShowPanelTitlebar && panelTitlebar.isDetailDocked ? (
-            <div className="global-titlebar-platform-switch">
-              <PlatformSwitch
-                checked={panelTitlebar.isEnabled}
-                onClick={onPlatformTitleSwitchToggle}
-              />
-            </div>
-          ) : activeView === 'file-library' && shouldShowPanelTitlebar && panelTitlebar.isDetailDocked ? (
-            <div className="global-titlebar-file-library-actions">
-              {panelTitlebar.actions}
-            </div>
-          ) : shouldShowScheduledTitleCreate ? (
-            <div className="global-titlebar-scheduled-create">
-              <div className="scheduled-titlebar-create-anchor" ref={scheduledTitleCreateRef}>
-                <button
-                  className={`scheduled-create-button scheduled-titlebar-create-button ${
-                    isScheduledTitleCreateOpen ? 'active' : ''
-                  }`}
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    setIsScheduledTitleCreateOpen((isOpen) => !isOpen)
-                  }}
-                >
-                  <span>创建</span>
-                  <FigmaIcon icon={scheduledChevronDownIcon} />
-                </button>
-                {isScheduledTitleCreateOpen ? (
-                  <div className="scheduled-create-popover scheduled-titlebar-create-popover" role="menu" aria-label="创建定时任务">
-                    <button
-                      className="scheduled-create-option"
-                      type="button"
-                      role="menuitem"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        setIsScheduledTitleCreateOpen(false)
-                        onScheduledCreateChat()
-                      }}
-                    >
-                      <span className="scheduled-create-option-surface">
-                        <FigmaIcon icon={scheduledMessageCircleIcon} />
-                        <span>通过聊天创建</span>
-                      </span>
-                    </button>
-                    <button
-                      className="scheduled-create-option"
-                      type="button"
-                      role="menuitem"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        setIsScheduledTitleCreateOpen(false)
-                        window.dispatchEvent(new Event('scheduled-manual-create-request'))
-                      }}
-                    >
-                      <span className="scheduled-create-option-surface">
-                        <FigmaIcon icon={scheduledPenIcon} />
-                        <span>手动创建</span>
-                      </span>
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
         </div>
-      </div>
-    </header>
+      </header>
+      {isConversationMenuOpen
+        ? createPortal(
+            <div
+              className="composer-popover conversation-title-popover"
+              ref={conversationTitlePopoverRef}
+              role="menu"
+              aria-label="对话操作"
+              style={conversationTitlePopoverStyle}
+            >
+              <button
+                className="composer-popover-option"
+                type="button"
+                role="menuitem"
+                onClick={() => closeConversationMenuWithToast('已置顶对话')}
+              >
+                <span className="composer-popover-option-surface">
+                  <span className="composer-popover-option-label">置顶对话</span>
+                </span>
+              </button>
+              <button
+                className="composer-popover-option"
+                type="button"
+                role="menuitem"
+                onClick={openConversationRenameDialog}
+              >
+                <span className="composer-popover-option-surface">
+                  <span className="composer-popover-option-label">重命名对话</span>
+                </span>
+              </button>
+              <button
+                className="composer-popover-option"
+                type="button"
+                role="menuitem"
+                onClick={() => closeConversationMenuWithToast('已归档对话')}
+              >
+                <span className="composer-popover-option-surface">
+                  <span className="composer-popover-option-label">归档对话</span>
+                </span>
+              </button>
+              <div className="composer-popover-separator" role="separator" />
+              <button
+                className="composer-popover-option"
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  copyConversationText(activeConversationId)
+                  closeConversationMenuWithToast('已复制对话ID')
+                }}
+              >
+                <span className="composer-popover-option-surface">
+                  <span className="composer-popover-option-label">复制对话ID</span>
+                </span>
+              </button>
+              <button
+                className="composer-popover-option"
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  copyConversationText(conversationMarkdown)
+                  closeConversationMenuWithToast('已复制为 Markdown')
+                }}
+              >
+                <span className="composer-popover-option-surface">
+                  <span className="composer-popover-option-label">复制为 Markdown</span>
+                </span>
+              </button>
+            </div>,
+            document.body,
+          )
+        : null}
+      {isConversationRenameOpen
+        ? createPortal(
+            <div className="skills-modal-overlay modal-fade-layer" role="presentation">
+              <section className="skills-github-dialog conversation-rename-dialog modal-pop-surface" role="dialog" aria-modal="true" aria-label="重命名对话">
+                <header className="skills-github-heading">
+                  <h2>重命名对话</h2>
+                  <button type="button" aria-label="关闭" onClick={() => setIsConversationRenameOpen(false)}>
+                    <FigmaIcon icon={modalXIcon} />
+                  </button>
+                </header>
+                <div className="skills-github-content">
+                  <input
+                    value={conversationRenameTitle}
+                    autoFocus
+                    placeholder="请输入对话标题"
+                    onChange={(event) => setConversationRenameTitle(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        submitConversationRename()
+                      }
+                    }}
+                  />
+                </div>
+                <footer className="skills-github-actions">
+                  <button type="button" onClick={() => setIsConversationRenameOpen(false)}>
+                    取消
+                  </button>
+                  <button type="button" onClick={submitConversationRename} disabled={!conversationRenameTitle.trim()}>
+                    确定
+                  </button>
+                </footer>
+              </section>
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   )
 }
 
@@ -6126,6 +6876,55 @@ function SidebarToggleControl({
   return <IconButton label={label} icon={icon} onClick={onClick} />
 }
 
+type ComposerToolbarAction = 'add' | 'permission' | 'skills' | 'employees' | 'model'
+type ComposerPermissionMode = 'default' | 'review' | 'full'
+
+const SKILL_ACCENT_COLORS = [
+  '#FF5C4D',
+  '#FF922B',
+  '#27B66A',
+  '#0088FF',
+  '#7080FF',
+  '#966CFF',
+  '#E64D92',
+]
+
+const composerPermissionOptions: Array<{
+  value: ComposerPermissionMode
+  label: string
+  buttonLabel: string
+  icon: string
+}> = [
+  {
+    value: 'default',
+    label: '默认权限',
+    buttonLabel: '默认权限',
+    icon: composerPermissionDefaultIcon,
+  },
+  {
+    value: 'review',
+    label: '自动审查',
+    buttonLabel: '自动审查',
+    icon: composerPermissionReviewIcon,
+  },
+  {
+    value: 'full',
+    label: '完全访问权限',
+    buttonLabel: '完全访问',
+    icon: composerPermissionFullIcon,
+  },
+]
+
+const composerModelOptions = [
+  'Qwen3.7-Plus',
+  'Qwen3.6-Plus',
+  'Qwen3-VL-Flash',
+  'deepseek-v4-pro',
+  'Deepseek-v4-flash',
+  'GLM-5.1',
+  'Kimi-K2.6',
+]
+
 function PromptComposer({
   hasChat,
   onSendMessage,
@@ -6137,8 +6936,61 @@ function PromptComposer({
 }) {
   const composerRef = useRef<HTMLFormElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const addMenuRef = useRef<HTMLDivElement>(null)
+  const addPopoverRef = useRef<HTMLDivElement>(null)
+  const addSnippetMenuRef = useRef<HTMLButtonElement>(null)
+  const addSnippetPopoverRef = useRef<HTMLDivElement>(null)
+  const permissionMenuRef = useRef<HTMLDivElement>(null)
+  const permissionPopoverRef = useRef<HTMLDivElement>(null)
+  const skillsMenuRef = useRef<HTMLDivElement>(null)
+  const skillsPopoverRef = useRef<HTMLDivElement>(null)
+  const employeesMenuRef = useRef<HTMLDivElement>(null)
+  const employeesPopoverRef = useRef<HTMLDivElement>(null)
+  const modelMenuRef = useRef<HTMLDivElement>(null)
+  const modelPopoverRef = useRef<HTMLDivElement>(null)
   const [prompt, setPrompt] = useState('')
   const [composerHeight, setComposerHeight] = useState(COMPOSER_MIN_HEIGHT)
+  const [activeToolbarAction, setActiveToolbarAction] = useState<ComposerToolbarAction | null>(null)
+  const [isAddSnippetOpen, setIsAddSnippetOpen] = useState(false)
+  const [permissionMode, setPermissionMode] = useState<ComposerPermissionMode>('default')
+  const [, setSelectedComposerSkill] = useState<string | null>(null)
+  const [, setSelectedComposerEmployee] = useState<string | null>(null)
+  const [composerModel, setComposerModel] = useState('Qwen3.7-Plus')
+
+  const addPopoverStyle = useFixedFloatingPopoverPlacement(
+    activeToolbarAction === 'add',
+    addMenuRef,
+    addPopoverRef,
+    'left',
+  )
+  const addSnippetPopoverStyle = useFixedSidePopoverPlacement(
+    activeToolbarAction === 'add' && isAddSnippetOpen,
+    addPopoverRef,
+    addSnippetPopoverRef,
+  )
+  const permissionPopoverStyle = useFixedFloatingPopoverPlacement(
+    activeToolbarAction === 'permission',
+    permissionMenuRef,
+    permissionPopoverRef,
+    'left',
+  )
+  const skillsPopoverStyle = useFixedFloatingPopoverPlacement(
+    activeToolbarAction === 'skills',
+    skillsMenuRef,
+    skillsPopoverRef,
+    'left',
+  )
+  const employeesPopoverStyle = useFixedFloatingPopoverPlacement(
+    activeToolbarAction === 'employees',
+    employeesMenuRef,
+    employeesPopoverRef,
+    'left',
+  )
+  const modelPopoverStyle = useFixedFloatingPopoverPlacement(
+    activeToolbarAction === 'model',
+    modelMenuRef,
+    modelPopoverRef,
+  )
 
   const syncComposerHeight = useCallback(() => {
     const composer = composerRef.current
@@ -6148,10 +7000,13 @@ function PromptComposer({
       return
     }
 
-    const composerTop = composer.getBoundingClientRect().top
-    const maxComposerHeight = Math.max(
-      COMPOSER_MIN_HEIGHT,
-      window.innerHeight - composerTop - COMPOSER_BOTTOM_SAFE_SPACE,
+    const composerRect = composer.getBoundingClientRect()
+    const availableComposerHeight = hasChat
+      ? composerRect.bottom - COMPOSER_BOTTOM_SAFE_SPACE
+      : window.innerHeight - composerRect.top - COMPOSER_BOTTOM_SAFE_SPACE
+    const maxComposerHeight = Math.min(
+      COMPOSER_MAX_HEIGHT,
+      Math.max(COMPOSER_MIN_HEIGHT, availableComposerHeight),
     )
     const previousTextareaHeight = textarea.style.height
     textarea.style.height = `${
@@ -6166,7 +7021,7 @@ function PromptComposer({
     )
 
     setComposerHeight(Math.round(nextComposerHeight))
-  }, [])
+  }, [hasChat])
 
   useEffect(() => {
     syncComposerHeight()
@@ -6180,6 +7035,62 @@ function PromptComposer({
   useEffect(() => {
     syncComposerHeight()
   }, [prompt, syncComposerHeight])
+
+  useEffect(() => {
+    if (!activeToolbarAction) {
+      return undefined
+    }
+
+    const closeOnOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target
+      const activePopover =
+        activeToolbarAction === 'add'
+          ? addPopoverRef.current
+          : activeToolbarAction === 'permission'
+            ? permissionPopoverRef.current
+            : activeToolbarAction === 'skills'
+              ? skillsPopoverRef.current
+              : activeToolbarAction === 'employees'
+                ? employeesPopoverRef.current
+                : activeToolbarAction === 'model'
+                  ? modelPopoverRef.current
+                  : null
+      const activeAnchor =
+        activeToolbarAction === 'add'
+          ? addMenuRef.current
+          : activeToolbarAction === 'permission'
+            ? permissionMenuRef.current
+            : activeToolbarAction === 'skills'
+              ? skillsMenuRef.current
+              : activeToolbarAction === 'employees'
+                ? employeesMenuRef.current
+                : activeToolbarAction === 'model'
+                  ? modelMenuRef.current
+                  : null
+
+      const isInsideAddSnippet =
+        target instanceof Node &&
+        activeToolbarAction === 'add' &&
+        (addSnippetMenuRef.current?.contains(target) ||
+          addSnippetPopoverRef.current?.contains(target))
+
+      if (
+        target instanceof Node &&
+        (activeAnchor?.contains(target) || activePopover?.contains(target) || isInsideAddSnippet)
+      ) {
+        return
+      }
+
+      setActiveToolbarAction(null)
+      setIsAddSnippetOpen(false)
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsidePointerDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointerDown)
+    }
+  }, [activeToolbarAction])
 
   const submitMessage = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
@@ -6207,9 +7118,72 @@ function PromptComposer({
     event.currentTarget.form?.requestSubmit()
   }, [])
 
+  const toggleToolbarAction = useCallback((action: ComposerToolbarAction) => {
+    setIsAddSnippetOpen(false)
+    setActiveToolbarAction((currentAction) => (currentAction === action ? null : action))
+  }, [])
+
+  const keepToolbarPopoverSwitch = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+  }, [])
+
+  const openNativeFilePicker = useCallback((kind: 'file' | 'folder' | 'image') => {
+    const input = document.createElement('input')
+    input.type = 'file'
+
+    if (kind === 'folder') {
+      input.setAttribute('webkitdirectory', '')
+      input.setAttribute('directory', '')
+    } else {
+      input.multiple = true
+    }
+
+    if (kind === 'image') {
+      input.accept = 'image/*'
+    }
+
+    input.style.position = 'fixed'
+    input.style.left = '-9999px'
+    input.style.top = '0'
+    input.addEventListener('change', () => input.remove(), { once: true })
+    document.body.appendChild(input)
+    input.click()
+  }, [])
+
+  const closeToolbarPopover = useCallback(() => {
+    setIsAddSnippetOpen(false)
+    setActiveToolbarAction(null)
+  }, [])
+
+  const composerSnippetOptions = [
+    { label: '代码审查', icon: composerSnippetCodeReviewIcon },
+    { label: '实现计划', icon: composerSnippetPlanIcon },
+    { label: '解释这段', icon: composerSnippetExplainIcon },
+  ]
+
+  const insertPromptSnippet = useCallback(
+    (snippet: string) => {
+      setPrompt((currentPrompt) => {
+        const nextSnippet = `${snippet}：`
+        return currentPrompt.trim() ? `${currentPrompt}\n${nextSnippet}` : nextSnippet
+      })
+      closeToolbarPopover()
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus()
+        syncComposerHeight()
+      })
+    },
+    [closeToolbarPopover, syncComposerHeight],
+  )
+
+  const selectedPermission = composerPermissionOptions.find(
+    (option) => option.value === permissionMode,
+  )
+
   const composerStyle = {
     '--composer-height': `${composerHeight}px`,
   } as CSSProperties
+  const portalRoot = typeof document === 'undefined' ? null : document.body
 
   return (
     <form
@@ -6240,19 +7214,300 @@ function PromptComposer({
 
       <div className="composer-toolbar">
         <div className="toolbar-group">
-          <IconButton label="添加" icon={plusIcon} />
-          <button className="pill-button" type="button">
-            <FigmaIcon icon={handIcon} />
-            <span>默认权限</span>
-            <FigmaIcon icon={chevronDownIcon} />
-          </button>
+          <div className="composer-toolbar-popover-anchor" ref={addMenuRef}>
+            <button
+              className={`icon-button ghost composer-toolbar-icon-action${
+                activeToolbarAction === 'add' ? ' active' : ''
+              }`}
+              type="button"
+              aria-label="添加"
+              aria-pressed={activeToolbarAction === 'add'}
+              onPointerDown={keepToolbarPopoverSwitch}
+              onClick={() => toggleToolbarAction('add')}
+            >
+              <FigmaIcon icon={plusIcon} />
+            </button>
+            {portalRoot && activeToolbarAction === 'add'
+              ? createPortal(
+              <div
+                ref={addPopoverRef}
+                className="composer-popover composer-add-popover"
+                style={addPopoverStyle}
+              >
+                {[
+                  { label: '添加文件', icon: composerAddFileIcon, kind: 'file' as const },
+                  { label: '添加文件夹', icon: composerAddFolderIcon, kind: 'folder' as const },
+                  { label: '添加图片', icon: composerAddImageIcon, kind: 'image' as const },
+                ].map((option) => (
+                  <button
+                    key={option.label}
+                    className="composer-popover-option"
+                    type="button"
+                    onPointerEnter={() => setIsAddSnippetOpen(false)}
+                    onFocus={() => setIsAddSnippetOpen(false)}
+                    onClick={() => {
+                      closeToolbarPopover()
+                      openNativeFilePicker(option.kind)
+                    }}
+                  >
+                    <span className="composer-popover-option-surface">
+                      <FigmaIcon icon={option.icon} />
+                      <span className="composer-popover-option-label">{option.label}</span>
+                    </span>
+                  </button>
+                ))}
+                <div className="composer-popover-separator" aria-hidden="true" />
+                <button
+                  ref={addSnippetMenuRef}
+                  className={`composer-popover-option${isAddSnippetOpen ? ' selected' : ''}`}
+                  type="button"
+                  onPointerEnter={() => setIsAddSnippetOpen(true)}
+                  onFocus={() => setIsAddSnippetOpen(true)}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    setIsAddSnippetOpen(true)
+                  }}
+                >
+                  <span className="composer-popover-option-surface">
+                    <FigmaIcon icon={composerSnippetIcon} />
+                    <span className="composer-popover-option-label">提示片段</span>
+                    <span className="composer-popover-option-chevron">
+                      <FigmaIcon icon={chevronRightIcon} />
+                    </span>
+                  </span>
+                </button>
+              </div>,
+                portalRoot,
+              )
+              : null}
+            {portalRoot && activeToolbarAction === 'add' && isAddSnippetOpen
+              ? createPortal(
+              <div
+                ref={addSnippetPopoverRef}
+                className="composer-popover composer-add-snippet-popover"
+                style={addSnippetPopoverStyle}
+              >
+                {composerSnippetOptions.map((snippet) => (
+                  <button
+                    key={snippet.label}
+                    className="composer-popover-option"
+                    type="button"
+                    onClick={() => insertPromptSnippet(snippet.label)}
+                  >
+                    <span className="composer-popover-option-surface">
+                      <FigmaIcon icon={snippet.icon} />
+                      <span className="composer-popover-option-label">{snippet.label}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>,
+                portalRoot,
+              )
+              : null}
+          </div>
+          <div className="composer-toolbar-popover-anchor" ref={permissionMenuRef}>
+            <button
+              className={`pill-button permission-select permission-${permissionMode}${
+                activeToolbarAction === 'permission' ? ' active' : ''
+              }`}
+              type="button"
+              aria-pressed={activeToolbarAction === 'permission'}
+              onPointerDown={keepToolbarPopoverSwitch}
+              onClick={() => toggleToolbarAction('permission')}
+            >
+              <FigmaIcon icon={selectedPermission?.icon ?? composerPermissionDefaultIcon} inheritColor />
+              <span>{selectedPermission?.buttonLabel ?? '默认权限'}</span>
+              <FigmaIcon icon={chevronDownIcon} inheritColor />
+            </button>
+            {portalRoot && activeToolbarAction === 'permission'
+              ? createPortal(
+              <div
+                ref={permissionPopoverRef}
+                className="composer-popover composer-permission-popover"
+                style={permissionPopoverStyle}
+              >
+                {composerPermissionOptions.map((option) => {
+                  const isSelected = permissionMode === option.value
+
+                  return (
+                    <button
+                      key={option.value}
+                      className={`composer-popover-option${isSelected ? ' selected' : ''}`}
+                      type="button"
+                      onClick={() => {
+                        setPermissionMode(option.value)
+                        closeToolbarPopover()
+                      }}
+                    >
+                      <span className="composer-popover-option-surface">
+                        <FigmaIcon icon={option.icon} />
+                        <span className="composer-popover-option-label">{option.label}</span>
+                        {isSelected ? (
+                          <span className="composer-popover-check">
+                            <FigmaIcon icon={settingsCheckIcon} />
+                          </span>
+                        ) : null}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>,
+                portalRoot,
+              )
+              : null}
+          </div>
+          <div className="composer-toolbar-popover-anchor" ref={skillsMenuRef}>
+            <button
+              className={`pill-button composer-toolbar-action${
+                activeToolbarAction === 'skills' ? ' active' : ''
+              }`}
+              type="button"
+              aria-pressed={activeToolbarAction === 'skills'}
+              onPointerDown={keepToolbarPopoverSwitch}
+              onClick={() => toggleToolbarAction('skills')}
+            >
+              <FigmaIcon icon={composerSkillIcon} />
+              <span>技能</span>
+              <FigmaIcon icon={chevronDownIcon} />
+            </button>
+            {portalRoot && activeToolbarAction === 'skills'
+              ? createPortal(
+              <div
+                ref={skillsPopoverRef}
+                className="composer-popover composer-skill-popover"
+                style={skillsPopoverStyle}
+              >
+                {skillItems.map((skill, index) => {
+                  const initial = skill.title.trim().charAt(0).toUpperCase()
+
+                  return (
+                    <button
+                      key={skill.title}
+                      className="composer-popover-option"
+                      type="button"
+                      onClick={() => {
+                        setSelectedComposerSkill(skill.title)
+                        closeToolbarPopover()
+                      }}
+                    >
+                      <span className="composer-popover-option-surface">
+                        <span
+                          className="composer-skill-chip"
+                          style={{
+                            backgroundColor: SKILL_ACCENT_COLORS[index % SKILL_ACCENT_COLORS.length],
+                          }}
+                        >
+                          {initial}
+                        </span>
+                        <span className="composer-popover-option-label">{skill.title}</span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>,
+                portalRoot,
+              )
+              : null}
+          </div>
+          <div className="composer-toolbar-popover-anchor" ref={employeesMenuRef}>
+            <button
+              className={`pill-button composer-toolbar-action${
+                activeToolbarAction === 'employees' ? ' active' : ''
+              }`}
+              type="button"
+              aria-pressed={activeToolbarAction === 'employees'}
+              onPointerDown={keepToolbarPopoverSwitch}
+              onClick={() => toggleToolbarAction('employees')}
+            >
+              <FigmaIcon icon={composerEmployeeIcon} />
+              <span>员工</span>
+              <FigmaIcon icon={chevronDownIcon} />
+            </button>
+            {portalRoot && activeToolbarAction === 'employees'
+              ? createPortal(
+              <div
+                ref={employeesPopoverRef}
+                className="composer-popover composer-employee-popover"
+                style={employeesPopoverStyle}
+              >
+                {employeeItems.map((employee) => (
+                  <button
+                    key={employee.title}
+                    className="composer-popover-option"
+                    type="button"
+                    onClick={() => {
+                      setSelectedComposerEmployee(employee.title)
+                      closeToolbarPopover()
+                    }}
+                  >
+                    <span className="composer-popover-option-surface">
+                      <img
+                        className="composer-employee-avatar"
+                        src={employee.image}
+                        alt=""
+                        aria-hidden="true"
+                      />
+                      <span className="composer-popover-option-label">{employee.title}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>,
+                portalRoot,
+              )
+              : null}
+          </div>
         </div>
 
         <div className="toolbar-group">
-          <button className="pill-button model-select" type="button">
-            <span>Qwen3.7-Plus</span>
-            <FigmaIcon icon={chevronDownIcon} />
-          </button>
+          <div className="composer-toolbar-popover-anchor" ref={modelMenuRef}>
+            <button
+              className={`pill-button model-select${
+                activeToolbarAction === 'model' ? ' active' : ''
+              }`}
+              type="button"
+              aria-pressed={activeToolbarAction === 'model'}
+              onPointerDown={keepToolbarPopoverSwitch}
+              onClick={() => toggleToolbarAction('model')}
+            >
+              <span>{composerModel}</span>
+              <FigmaIcon icon={chevronDownIcon} />
+            </button>
+            {portalRoot && activeToolbarAction === 'model'
+              ? createPortal(
+              <div
+                ref={modelPopoverRef}
+                className="composer-popover composer-model-popover"
+                style={modelPopoverStyle}
+              >
+                {composerModelOptions.map((model) => {
+                  const isSelected = composerModel === model
+
+                  return (
+                    <button
+                      key={model}
+                      className={`composer-popover-option${isSelected ? ' selected' : ''}`}
+                      type="button"
+                      onClick={() => {
+                        setComposerModel(model)
+                        closeToolbarPopover()
+                      }}
+                    >
+                      <span className="composer-popover-option-surface">
+                        <span className="composer-popover-option-label">{model}</span>
+                        {isSelected ? (
+                          <span className="composer-popover-check">
+                            <FigmaIcon icon={settingsCheckIcon} />
+                          </span>
+                        ) : null}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>,
+                portalRoot,
+              )
+              : null}
+          </div>
           <IconButton label="语音输入" icon={micIcon} />
           <IconButton
             label={isSending ? '发送中' : '发送'}
@@ -6428,6 +7683,7 @@ function Content({
           onTitleDockedChange={onSkillsTitleDockedChange}
           activeSkillsSection={activeSkillsSection}
           onActiveSkillsSectionChange={onActiveSkillsSectionChange}
+          language={language}
         />
       </main>
     )
@@ -6559,6 +7815,7 @@ function App() {
   const [chatScrollPositions, setChatScrollPositions] = useState<Record<string, number>>({})
   const [now, setNow] = useState(() => Date.now())
   const [chatError, setChatError] = useState<string | null>(null)
+  const [appToast, setAppToast] = useState<PlatformToastState | null>(null)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isSearchClosing, setIsSearchClosing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -6620,6 +7877,37 @@ function App() {
     const title = normalized.length > 18 ? `${normalized.slice(0, 18)}...` : normalized
 
     return title || '新对话'
+  }, [])
+
+  const showAppToast = useCallback((message: string) => {
+    setAppToast({
+      id: Date.now(),
+      tone: 'success',
+      message,
+    })
+  }, [])
+
+  const closeAppToast = useCallback(() => {
+    setAppToast(null)
+  }, [])
+
+  const renameActiveConversation = useCallback((nextTitle: string) => {
+    const title = nextTitle.trim()
+
+    if (!title) {
+      return
+    }
+
+    setConversations((currentConversations) =>
+      currentConversations.map((conversation) =>
+        conversation.active
+          ? {
+              ...conversation,
+              title,
+            }
+          : conversation,
+      ),
+    )
   }, [])
 
   useEffect(() => {
@@ -6960,7 +8248,9 @@ function App() {
       <GlobalTitleBar
         activeView={activeView}
         isSidebarCollapsed={isSidebarCollapsed}
+        activeConversationId={activeConversationId}
         activeConversationTitle={activeConversation?.title ?? ''}
+        activeConversationMessages={messages}
         hasChat={Boolean(activeConversation && (messages.length > 0 || isActiveConversationSending || chatError))}
         isSkillsTitleDocked={isSkillsTitleDocked}
         activeSkillsSection={activeSkillsSection}
@@ -6971,6 +8261,8 @@ function App() {
         fileLibraryTitlebar={fileLibraryTitlebar}
         settingsTitlebar={settingsTitlebar}
         onPlatformTitleSwitchToggle={togglePlatformFromTitlebar}
+        onConversationTitleRename={renameActiveConversation}
+        onConversationTitleToast={showAppToast}
         onToggleSidebar={() => setIsSidebarCollapsed((isCollapsed) => !isCollapsed)}
       />
       <Content
@@ -7009,6 +8301,7 @@ function App() {
           onSelectConversation={selectConversationFromSearch}
         />
       ) : null}
+      <AppToast toast={appToast} onClose={closeAppToast} />
     </div>
   )
 }

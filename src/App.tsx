@@ -21,6 +21,11 @@ import { listen } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { LogicalSize } from '@tauri-apps/api/dpi'
 import arrowUpIcon from './assets/figma-icons/arrow-up.svg?raw'
+import chatPanelArrowLeftIcon from './assets/chat-panel/arrow-left.svg?raw'
+import chatPanelArrowRightIcon from './assets/chat-panel/arrow-right.svg?raw'
+import chatPanelGlobeIcon from './assets/chat-panel/globe.svg?raw'
+import chatPanelRefreshIcon from './assets/chat-panel/refresh-cw.svg?raw'
+import chatPanelSiteFileIcon from './assets/chat-panel/site-file-icon.svg?raw'
 import botMessageSquareIcon from './assets/figma-icons/bot-message-square.svg?raw'
 import chevronDownIcon from './assets/figma-icons/chevron-down.svg?raw'
 import circleGaugeIcon from './assets/figma-icons/circle-gauge.svg?raw'
@@ -2130,6 +2135,7 @@ function IconButton({
   variant = 'ghost',
   type = 'button',
   disabled = false,
+  active = false,
 }: {
   label: string
   icon: string
@@ -2137,18 +2143,58 @@ function IconButton({
   variant?: 'ghost' | 'send'
   type?: 'button' | 'submit'
   disabled?: boolean
+  active?: boolean
 }) {
   return (
     <button
-      className={`icon-button ${variant}`}
+      className={`icon-button ${variant}${active ? ' active' : ''}`}
       type={type}
       aria-label={label}
       title={label}
+      aria-pressed={active || undefined}
       onClick={onClick}
       disabled={disabled}
     >
       <FigmaIcon icon={icon} />
     </button>
+  )
+}
+
+function ChatPanelTabBar({ title }: { title: string }) {
+  const [activeTab, setActiveTab] = useState<'page' | 'asset'>('page')
+
+  return (
+    <div className="chat-panel-tabbar" aria-label="右侧面板标签栏">
+      <div className="chat-panel-tab-list" role="tablist">
+        <button
+          className={`chat-panel-tab${activeTab === 'page' ? ' active' : ''}`}
+          type="button"
+          title={title}
+          role="tab"
+          aria-selected={activeTab === 'page'}
+          onClick={() => setActiveTab('page')}
+        >
+          <FigmaIcon icon={chatPanelGlobeIcon} />
+          <span>{title}</span>
+        </button>
+        <button
+          className={`chat-panel-tab${activeTab === 'asset' ? ' active' : ''}`}
+          type="button"
+          title="网站logo.svg"
+          role="tab"
+          aria-selected={activeTab === 'asset'}
+          onClick={() => setActiveTab('asset')}
+        >
+          <FigmaIcon icon={chatPanelSiteFileIcon} />
+          <span>网站logo.svg</span>
+        </button>
+      </div>
+      <div className="chat-panel-tab-add-group">
+        <button className="icon-button chat-panel-tab-add" type="button" aria-label="新建标签页">
+          <FigmaIcon icon={plusIcon} />
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -6366,9 +6412,11 @@ function GlobalTitleBar({
   platformTitlebar,
   fileLibraryTitlebar,
   settingsTitlebar,
+  isChatRightPanelOpen,
   onPlatformTitleSwitchToggle,
   onConversationTitleRename,
   onConversationTitleToast,
+  onToggleChatRightPanel,
   onToggleSidebar,
 }: {
   activeView: AppView
@@ -6385,9 +6433,11 @@ function GlobalTitleBar({
   platformTitlebar: PlatformTitlebarState
   fileLibraryTitlebar: PlatformTitlebarState
   settingsTitlebar: SettingsTitlebarState
+  isChatRightPanelOpen: boolean
   onPlatformTitleSwitchToggle: () => void
   onConversationTitleRename: (title: string) => void
   onConversationTitleToast: (message: string) => void
+  onToggleChatRightPanel: () => void
   onToggleSidebar: () => void
 }) {
   const [isScheduledTitleCreateOpen, setIsScheduledTitleCreateOpen] = useState(false)
@@ -6416,6 +6466,7 @@ function GlobalTitleBar({
   const shouldShowPanelTitlebar =
     (activeView === 'message-platform' || activeView === 'file-library') && panelTitlebar.isDocked
   const shouldShowSettingsTitlebar = activeView === 'settings' && settingsTitlebar.isDocked
+  const shouldShowChatRightPanel = activeView === 'chat' && isChatRightPanelOpen
   const panelListTitle = activeView === 'file-library' ? '文件库' : '消息平台'
   const skillsTitle = shouldShowSkillsTitleTabs ? (activeSkillsSection === 'skills' ? '技能' : '员工') : ''
   const skillsSubtitle = shouldShowSkillsTitleTabs ? (activeSkillsSection === 'skills' ? '员工' : '技能') : ''
@@ -6455,6 +6506,7 @@ function GlobalTitleBar({
     shouldShowPanelTitlebar && panelTitlebar.isListDocked ? 'has-platform-list-title' : '',
     shouldShowPanelTitlebar && panelTitlebar.isDetailDocked ? 'has-platform-detail-title' : '',
     activeView === 'skills' && isSkillsTitleDocked ? 'has-mask' : '',
+    shouldShowChatRightPanel ? 'chat-right-panel-open' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -6675,10 +6727,24 @@ function GlobalTitleBar({
               ) : null}
             </div>
             {activeView === 'chat' ? (
-              <div className="global-titlebar-secondary-group">
+              <div
+                className={`global-titlebar-secondary-group${
+                  shouldShowChatRightPanel ? ' chat-panel-titlebar-group' : ''
+                }`}
+              >
+                {shouldShowChatRightPanel ? (
+                  <ChatPanelTabBar
+                    title={activeConversationTitle || '帮我设计一个关于AI介绍的宣传网站'}
+                  />
+                ) : null}
                 <div className="global-titlebar-actions">
                   <IconButton label="底部面板" icon={panelBottomIcon} />
-                  <IconButton label="右侧面板" icon={panelRightIcon} />
+                  <IconButton
+                    label="右侧面板"
+                    icon={panelRightIcon}
+                    active={isChatRightPanelOpen}
+                    onClick={onToggleChatRightPanel}
+                  />
                 </div>
               </div>
             ) : activeView === 'message-platform' && shouldShowPanelTitlebar && panelTitlebar.isDetailDocked ? (
@@ -6929,10 +6995,12 @@ function PromptComposer({
   hasChat,
   onSendMessage,
   isSending,
+  onHeightChange,
 }: {
   hasChat: boolean
   onSendMessage: (message: string) => Promise<void>
   isSending: boolean
+  onHeightChange?: (height: number) => void
 }) {
   const composerRef = useRef<HTMLFormElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -7035,6 +7103,12 @@ function PromptComposer({
   useEffect(() => {
     syncComposerHeight()
   }, [prompt, syncComposerHeight])
+
+  useEffect(() => {
+    if (hasChat) {
+      onHeightChange?.(composerHeight)
+    }
+  }, [composerHeight, hasChat, onHeightChange])
 
   useEffect(() => {
     if (!activeToolbarAction) {
@@ -7186,13 +7260,13 @@ function PromptComposer({
   const portalRoot = typeof document === 'undefined' ? null : document.body
 
   return (
-    <form
-      ref={composerRef}
-      className="composer"
-      style={composerStyle}
-      aria-label="新对话输入框"
-      onSubmit={submitMessage}
-    >
+    <div className={`composer-stage${hasChat ? ' has-chat' : ''}`} style={composerStyle}>
+      <form
+        ref={composerRef}
+        className="composer"
+        aria-label="新对话输入框"
+        onSubmit={submitMessage}
+      >
       <label className="sr-only" htmlFor="prompt">
         输入消息
       </label>
@@ -7459,7 +7533,7 @@ function PromptComposer({
         </div>
 
         <div className="toolbar-group">
-          <div className="composer-toolbar-popover-anchor" ref={modelMenuRef}>
+          <div className="composer-toolbar-popover-anchor composer-model-anchor" ref={modelMenuRef}>
             <button
               className={`pill-button model-select${
                 activeToolbarAction === 'model' ? ' active' : ''
@@ -7518,7 +7592,8 @@ function PromptComposer({
           />
         </div>
       </div>
-    </form>
+      </form>
+    </div>
   )
 }
 
@@ -7592,27 +7667,60 @@ function ChatThread({
   }
 
   return (
-    <div ref={threadRef} className="chat-thread" aria-live="polite" onScroll={saveScrollPosition}>
-      {messages.map((message, index) => (
-        <div key={`${message.role}-${index}`} className={`chat-row ${message.role}`}>
-          {message.role === 'assistant' && message.processedSeconds !== undefined ? (
-            <article className="assistant-response">
-              <div className="assistant-status">已处理{message.processedSeconds}s</div>
-              <div className="assistant-divider" aria-hidden="true" />
-              <div className="chat-message assistant">{message.content}</div>
-            </article>
-          ) : (
-            <article className={`chat-message ${message.role}`}>{message.content}</article>
-          )}
+    <div className="chat-thread-shell">
+      <div ref={threadRef} className="chat-thread" aria-live="polite" onScroll={saveScrollPosition}>
+        <div className="chat-thread-content">
+          {messages.map((message, index) => (
+            <div key={`${message.role}-${index}`} className={`chat-row ${message.role}`}>
+              {message.role === 'assistant' && message.processedSeconds !== undefined ? (
+                <article className="assistant-response">
+                  <div className="assistant-status">已处理{message.processedSeconds}s</div>
+                  <div className="assistant-divider" aria-hidden="true" />
+                  <div className="chat-message assistant">{message.content}</div>
+                </article>
+              ) : (
+                <article className={`chat-message ${message.role}`}>{message.content}</article>
+              )}
+            </div>
+          ))}
+          {isSending ? (
+            <div className="chat-row assistant">
+              <div className="chat-message assistant pending">正在思考…</div>
+            </div>
+          ) : null}
+          {error ? <div className="chat-error">{error}</div> : null}
         </div>
-      ))}
-      {isSending ? (
-        <div className="chat-row assistant">
-          <div className="chat-message assistant pending">正在思考…</div>
-        </div>
-      ) : null}
-      {error ? <div className="chat-error">{error}</div> : null}
+      </div>
     </div>
+  )
+}
+
+function ChatRightPanel() {
+  return (
+    <section className="chat-right-panel" aria-label="右侧面板">
+      <div className="chat-right-panel-browser-toolbar">
+        <div className="chat-right-panel-navigation" aria-label="页面导航">
+          <button className="icon-button" type="button" aria-label="后退">
+            <FigmaIcon icon={chatPanelArrowLeftIcon} />
+          </button>
+          <button className="icon-button" type="button" aria-label="前进">
+            <FigmaIcon icon={chatPanelArrowRightIcon} />
+          </button>
+          <button className="icon-button" type="button" aria-label="刷新">
+            <FigmaIcon icon={chatPanelRefreshIcon} />
+          </button>
+        </div>
+        <div className="chat-right-panel-url" title="http://127.0.0.1:8080/?brand=1779689290173">
+          http://127.0.0.1:8080/?brand=1779689290173
+        </div>
+        <div className="chat-right-panel-menu-group">
+          <button className="icon-button" type="button" aria-label="更多页面操作">
+            <FigmaIcon icon={ellipsisIcon} />
+          </button>
+        </div>
+      </div>
+      <div className="chat-right-panel-viewport" />
+    </section>
   )
 }
 
@@ -7640,6 +7748,7 @@ function Content({
   chatScrollTop,
   onChatScrollPositionChange,
   onSendMessage,
+  isChatRightPanelOpen,
 }: {
   activeView: AppView
   activeSettingsSection: SettingsSection
@@ -7664,8 +7773,10 @@ function Content({
   chatScrollTop: number
   onChatScrollPositionChange: (conversationId: string, scrollTop: number) => void
   onSendMessage: (message: string) => Promise<void>
+  isChatRightPanelOpen: boolean
 }) {
   const hasChat = messages.length > 0 || isSending || error
+  const [chatComposerHeight, setChatComposerHeight] = useState(COMPOSER_MIN_HEIGHT)
 
   if (activeView === 'message-platform') {
     return (
@@ -7726,26 +7837,33 @@ function Content({
   }
 
   return (
-    <main className="content-panel">
-      <section className={`welcome-panel ${hasChat ? 'has-chat' : ''}`}>
-        {hasChat ? (
-          <ChatThread
-            conversationId={activeConversationId}
-            messages={messages}
+    <main className={`content-panel content-panel-chat${isChatRightPanelOpen ? ' has-right-panel' : ''}`}>
+      <div className={`chat-primary-pane${isChatRightPanelOpen ? ' panel-open' : ''}`}>
+        <section
+          className={`welcome-panel ${hasChat ? 'has-chat' : ''}`}
+          style={{ '--chat-composer-height': `${chatComposerHeight}px` } as CSSProperties}
+        >
+          {hasChat ? (
+            <ChatThread
+              conversationId={activeConversationId}
+              messages={messages}
+              isSending={isSending}
+              error={error}
+              scrollTop={chatScrollTop}
+              onScrollPositionChange={onChatScrollPositionChange}
+            />
+          ) : (
+            <h1>今天想做点什么？</h1>
+          )}
+          <PromptComposer
+            hasChat={Boolean(hasChat)}
+            onSendMessage={onSendMessage}
             isSending={isSending}
-            error={error}
-            scrollTop={chatScrollTop}
-            onScrollPositionChange={onChatScrollPositionChange}
+            onHeightChange={setChatComposerHeight}
           />
-        ) : (
-          <h1>今天想做点什么？</h1>
-        )}
-        <PromptComposer
-          hasChat={Boolean(hasChat)}
-          onSendMessage={onSendMessage}
-          isSending={isSending}
-        />
-      </section>
+        </section>
+      </div>
+      {isChatRightPanelOpen ? <ChatRightPanel /> : null}
     </main>
   )
 }
@@ -7808,6 +7926,7 @@ function App() {
   })
   const [language, setLanguage] = useState<'中文' | 'English'>('中文')
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isChatRightPanelOpen, setIsChatRightPanelOpen] = useState(false)
   const [activeView, setActiveView] = useState<AppView>('chat')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [conversations, setConversations] = useState<ConversationRecord[]>([])
@@ -7854,6 +7973,7 @@ function App() {
     'workspace',
     isSidebarCollapsed ? 'sidebar-collapsed' : '',
     isWindowFullscreen ? 'window-fullscreen' : '',
+    activeView === 'chat' && isChatRightPanelOpen ? 'chat-right-panel-open' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -8260,9 +8380,11 @@ function App() {
         platformTitlebar={platformTitlebar}
         fileLibraryTitlebar={fileLibraryTitlebar}
         settingsTitlebar={settingsTitlebar}
+        isChatRightPanelOpen={isChatRightPanelOpen}
         onPlatformTitleSwitchToggle={togglePlatformFromTitlebar}
         onConversationTitleRename={renameActiveConversation}
         onConversationTitleToast={showAppToast}
+        onToggleChatRightPanel={() => setIsChatRightPanelOpen((isOpen) => !isOpen)}
         onToggleSidebar={() => setIsSidebarCollapsed((isCollapsed) => !isCollapsed)}
       />
       <Content
@@ -8289,6 +8411,7 @@ function App() {
         chatScrollTop={activeChatScrollTop}
         onChatScrollPositionChange={saveChatScrollPosition}
         onSendMessage={sendMessage}
+        isChatRightPanelOpen={isChatRightPanelOpen}
       />
       {isSearchOpen ? (
         <SearchDialog

@@ -1,0 +1,10 @@
+<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="lucide/globe" clip-path="url(#clip0_0_11)">
+<path id="Vector" d="M12.8335 7.00004C12.8335 10.2217 10.2218 12.8334 7.00014 12.8334M12.8335 7.00004C12.8335 3.77837 10.2218 1.1667 7.00014 1.1667M12.8335 7.00004H1.16681M7.00014 12.8334C3.77848 12.8334 1.16681 10.2217 1.16681 7.00004M7.00014 12.8334C5.50228 11.2606 4.66681 9.17194 4.66681 7.00004C4.66681 4.82813 5.50228 2.73946 7.00014 1.1667M7.00014 12.8334C8.49801 11.2606 9.33348 9.17194 9.33348 7.00004C9.33348 4.82813 8.49801 2.73946 7.00014 1.1667M1.16681 7.00004C1.16681 3.77837 3.77848 1.1667 7.00014 1.1667" stroke="var(--stroke-0, black)" stroke-width="0.875" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<defs>
+<clipPath id="clip0_0_11">
+<rect width="14" height="14" fill="white"/>
+</clipPath>
+</defs>
+</svg>

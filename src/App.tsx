@@ -26,6 +26,8 @@ import chatPanelArrowRightIcon from './assets/chat-panel/arrow-right.svg?raw'
 import chatPanelGlobeIcon from './assets/chat-panel/globe.svg?raw'
 import chatPanelRefreshIcon from './assets/chat-panel/refresh-cw.svg?raw'
 import chatPanelSiteFileIcon from './assets/chat-panel/site-file-icon.svg?raw'
+import chatPanelSquareCodeIcon from './assets/chat-panel/square-code.svg?raw'
+import chatPanelTabCloseIcon from './assets/chat-panel/tab-close.svg?raw'
 import botMessageSquareIcon from './assets/figma-icons/bot-message-square.svg?raw'
 import chevronDownIcon from './assets/figma-icons/chevron-down.svg?raw'
 import circleGaugeIcon from './assets/figma-icons/circle-gauge.svg?raw'
@@ -2160,37 +2162,182 @@ function IconButton({
   )
 }
 
-function ChatPanelTabBar({ title }: { title: string }) {
-  const [activeTab, setActiveTab] = useState<'page' | 'asset'>('page')
+function ChatPanelTabBar({ title, onClosePanel }: { title: string; onClosePanel: () => void }) {
+  const [tabs, setTabs] = useState(() => [
+    {
+      id: 'page',
+      title,
+      icon: chatPanelGlobeIcon,
+    },
+    {
+      id: 'asset',
+      title: '网站logo.svg',
+      icon: chatPanelSiteFileIcon,
+    },
+  ])
+  const [activeTabId, setActiveTabId] = useState('page')
+  const tabItemRefs = useRef(new Map<string, HTMLDivElement>())
+  const [tabItemWidths, setTabItemWidths] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    setTabs((currentTabs) =>
+      currentTabs.map((tab) => (tab.id === 'page' ? { ...tab, title } : tab)),
+    )
+  }, [title])
+
+  const setTabItemRef = useCallback((tabId: string, element: HTMLDivElement | null) => {
+    if (element) {
+      tabItemRefs.current.set(tabId, element)
+      return
+    }
+
+    tabItemRefs.current.delete(tabId)
+  }, [])
+
+  useLayoutEffect(() => {
+    const measureTabItems = () => {
+      const nextWidths: Record<string, number> = {}
+
+      tabs.forEach((tab) => {
+        const element = tabItemRefs.current.get(tab.id)
+        if (!element) {
+          return
+        }
+
+        const previousWidth = element.style.width
+        element.style.width = 'max-content'
+        nextWidths[tab.id] = Math.max(50, Math.min(128, Math.ceil(element.getBoundingClientRect().width)))
+        element.style.width = previousWidth
+      })
+
+      setTabItemWidths((currentWidths) => {
+        const currentKeys = Object.keys(currentWidths)
+        const nextKeys = Object.keys(nextWidths)
+        const isSame =
+          currentKeys.length === nextKeys.length &&
+          nextKeys.every((key) => currentWidths[key] === nextWidths[key])
+
+        return isSame ? currentWidths : nextWidths
+      })
+    }
+
+    measureTabItems()
+
+    if (typeof ResizeObserver === 'undefined') {
+      return undefined
+    }
+
+    const resizeObserver = new ResizeObserver(measureTabItems)
+    tabItemRefs.current.forEach((element) => resizeObserver.observe(element))
+
+    return () => resizeObserver.disconnect()
+  }, [tabs])
+
+  const addChatPanelTab = useCallback(() => {
+    const nextIndex = tabs.length + 1
+    const nextTab = {
+      id: `page-${Date.now()}`,
+      title: `${title} ${nextIndex}`,
+      icon: chatPanelGlobeIcon,
+    }
+
+    setTabs((currentTabs) => [...currentTabs, nextTab])
+    setActiveTabId(nextTab.id)
+  }, [tabs.length, title])
+
+  const closeChatPanelTab = useCallback(
+    (tabId: string) => {
+      setTabs((currentTabs) => {
+        if (currentTabs.length <= 1) {
+          onClosePanel()
+          return currentTabs
+        }
+
+        const closedTabIndex = currentTabs.findIndex((tab) => tab.id === tabId)
+        const nextTabs = currentTabs.filter((tab) => tab.id !== tabId)
+
+        if (tabId === activeTabId) {
+          const nextActiveTab = nextTabs[Math.max(0, Math.min(closedTabIndex, nextTabs.length - 1))]
+          setActiveTabId(nextActiveTab.id)
+        }
+
+        return nextTabs
+      })
+    },
+    [activeTabId, onClosePanel],
+  )
+
+  const scrollChatPanelTabs = useCallback((event: ReactWheelEvent<HTMLDivElement>) => {
+    const target = event.currentTarget
+
+    if (target.scrollWidth <= target.clientWidth) {
+      return
+    }
+
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY
+
+    if (delta === 0) {
+      return
+    }
+
+    event.preventDefault()
+    target.scrollLeft += delta
+  }, [])
 
   return (
-    <div className="chat-panel-tabbar" aria-label="右侧面板标签栏">
-      <div className="chat-panel-tab-list" role="tablist">
-        <button
-          className={`chat-panel-tab${activeTab === 'page' ? ' active' : ''}`}
-          type="button"
-          title={title}
-          role="tab"
-          aria-selected={activeTab === 'page'}
-          onClick={() => setActiveTab('page')}
-        >
-          <FigmaIcon icon={chatPanelGlobeIcon} />
-          <span>{title}</span>
-        </button>
-        <button
-          className={`chat-panel-tab${activeTab === 'asset' ? ' active' : ''}`}
-          type="button"
-          title="网站logo.svg"
-          role="tab"
-          aria-selected={activeTab === 'asset'}
-          onClick={() => setActiveTab('asset')}
-        >
-          <FigmaIcon icon={chatPanelSiteFileIcon} />
-          <span>网站logo.svg</span>
-        </button>
+    <div className="chat-panel-tabs" aria-label="右侧面板标签组">
+      <div className="chat-panel-tab-list" role="tablist" onWheel={scrollChatPanelTabs}>
+        {tabs.map((tab) => {
+          const isActive = tab.id === activeTabId
+
+          return (
+            <div
+              key={tab.id}
+              ref={(element) => setTabItemRef(tab.id, element)}
+              className={`chat-panel-tab${isActive ? ' active' : ''}`}
+              title={tab.title}
+              role="tab"
+              tabIndex={0}
+              aria-selected={isActive}
+              style={tabItemWidths[tab.id] ? { width: `${tabItemWidths[tab.id]}px` } : undefined}
+              onClick={() => setActiveTabId(tab.id)}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') {
+                  return
+                }
+
+                event.preventDefault()
+                setActiveTabId(tab.id)
+              }}
+            >
+              <FigmaIcon icon={tab.icon} />
+              <span className="chat-panel-tab-label">{tab.title}</span>
+              <span className="chat-panel-tab-close-mask">
+                <button
+                  className="chat-panel-tab-close"
+                  type="button"
+                  aria-label={`关闭 ${tab.title}`}
+                  data-no-window-drag
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    closeChatPanelTab(tab.id)
+                  }}
+                >
+                  <FigmaIcon icon={chatPanelTabCloseIcon} />
+                </button>
+              </span>
+            </div>
+          )
+        })}
       </div>
       <div className="chat-panel-tab-add-group">
-        <button className="icon-button chat-panel-tab-add" type="button" aria-label="新建标签页">
+        <button
+          className="icon-button chat-panel-tab-add"
+          type="button"
+          aria-label="新建标签页"
+          data-no-window-drag
+          onClick={addChatPanelTab}
+        >
           <FigmaIcon icon={plusIcon} />
         </button>
       </div>
@@ -6413,9 +6560,11 @@ function GlobalTitleBar({
   fileLibraryTitlebar,
   settingsTitlebar,
   isChatRightPanelOpen,
+  isChatBottomPanelOpen,
   onPlatformTitleSwitchToggle,
   onConversationTitleRename,
   onConversationTitleToast,
+  onToggleChatBottomPanel,
   onToggleChatRightPanel,
   onToggleSidebar,
 }: {
@@ -6434,9 +6583,11 @@ function GlobalTitleBar({
   fileLibraryTitlebar: PlatformTitlebarState
   settingsTitlebar: SettingsTitlebarState
   isChatRightPanelOpen: boolean
+  isChatBottomPanelOpen: boolean
   onPlatformTitleSwitchToggle: () => void
   onConversationTitleRename: (title: string) => void
   onConversationTitleToast: (message: string) => void
+  onToggleChatBottomPanel: () => void
   onToggleChatRightPanel: () => void
   onToggleSidebar: () => void
 }) {
@@ -6467,6 +6618,7 @@ function GlobalTitleBar({
     (activeView === 'message-platform' || activeView === 'file-library') && panelTitlebar.isDocked
   const shouldShowSettingsTitlebar = activeView === 'settings' && settingsTitlebar.isDocked
   const shouldShowChatRightPanel = activeView === 'chat' && isChatRightPanelOpen
+  const shouldShowChatBottomPanel = activeView === 'chat' && isChatBottomPanelOpen
   const panelListTitle = activeView === 'file-library' ? '文件库' : '消息平台'
   const skillsTitle = shouldShowSkillsTitleTabs ? (activeSkillsSection === 'skills' ? '技能' : '员工') : ''
   const skillsSubtitle = shouldShowSkillsTitleTabs ? (activeSkillsSection === 'skills' ? '员工' : '技能') : ''
@@ -6486,7 +6638,6 @@ function GlobalTitleBar({
               : ''
   const shouldShowTitle = Boolean(title)
   const shouldShowDivider =
-    (activeView === 'chat' && shouldShowTitle) ||
     (activeView === 'skills' && isSkillsTitleDocked) ||
     (activeView === 'scheduled-tasks' && isScheduledTitleDocked) ||
     shouldShowSettingsTitlebar ||
@@ -6495,6 +6646,7 @@ function GlobalTitleBar({
     'global-titlebar',
     shouldShowDivider ? 'has-divider' : '',
     shouldShowPanelTitlebar ? 'has-platform-titlebar' : '',
+    activeView === 'chat' && shouldShowTitle ? 'chat-titlebar' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -6505,6 +6657,7 @@ function GlobalTitleBar({
     shouldShowPanelTitlebar ? 'has-platform-titlebar' : '',
     shouldShowPanelTitlebar && panelTitlebar.isListDocked ? 'has-platform-list-title' : '',
     shouldShowPanelTitlebar && panelTitlebar.isDetailDocked ? 'has-platform-detail-title' : '',
+    activeView === 'chat' && shouldShowTitle ? 'chat-titlebar-main' : '',
     activeView === 'skills' && isSkillsTitleDocked ? 'has-mask' : '',
     shouldShowChatRightPanel ? 'chat-right-panel-open' : '',
   ]
@@ -6627,6 +6780,23 @@ function GlobalTitleBar({
     setIsConversationRenameOpen(false)
   }, [conversationRenameTitle, onConversationTitleRename])
 
+  const chatPanelTitlebarControls = (
+    <div className="chat-panel-titlebar-controls">
+      <IconButton
+        label="底部面板"
+        icon={panelBottomIcon}
+        active={shouldShowChatBottomPanel}
+        onClick={onToggleChatBottomPanel}
+      />
+      <IconButton
+        label="右侧面板"
+        icon={panelRightIcon}
+        active={isChatRightPanelOpen}
+        onClick={onToggleChatRightPanel}
+      />
+    </div>
+  )
+
   return (
     <>
       <header
@@ -6727,26 +6897,17 @@ function GlobalTitleBar({
               ) : null}
             </div>
             {activeView === 'chat' ? (
-              <div
-                className={`global-titlebar-secondary-group${
-                  shouldShowChatRightPanel ? ' chat-panel-titlebar-group' : ''
-                }`}
-              >
-                {shouldShowChatRightPanel ? (
+              shouldShowChatRightPanel ? (
+                <div className="global-titlebar-secondary-group chat-panel-titlebar-group">
                   <ChatPanelTabBar
                     title={activeConversationTitle || '帮我设计一个关于AI介绍的宣传网站'}
+                    onClosePanel={onToggleChatRightPanel}
                   />
-                ) : null}
-                <div className="global-titlebar-actions">
-                  <IconButton label="底部面板" icon={panelBottomIcon} />
-                  <IconButton
-                    label="右侧面板"
-                    icon={panelRightIcon}
-                    active={isChatRightPanelOpen}
-                    onClick={onToggleChatRightPanel}
-                  />
+                  {chatPanelTitlebarControls}
                 </div>
-              </div>
+              ) : (
+                chatPanelTitlebarControls
+              )
             ) : activeView === 'message-platform' && shouldShowPanelTitlebar && panelTitlebar.isDetailDocked ? (
               <div className="global-titlebar-platform-switch">
                 <PlatformSwitch
@@ -7740,6 +7901,306 @@ function ChatRightPanel({ isOpen }: { isOpen: boolean }) {
   )
 }
 
+function ChatBottomPanel({ onClose }: { onClose: () => void }) {
+  const minPanelHeight = 160
+  const defaultPanelHeight = 226
+  const [tabs, setTabs] = useState(() => [
+    {
+      id: 'terminal-1',
+      title: 'Token官网',
+      terminalValue: 'leo@huizhi001 Token官网 % ',
+    },
+  ])
+  const [activeTabId, setActiveTabId] = useState('terminal-1')
+  const tabItemRefs = useRef(new Map<string, HTMLDivElement>())
+  const resizeStartRef = useRef<{ pointerY: number; height: number } | null>(null)
+  const [tabItemWidths, setTabItemWidths] = useState<Record<string, number>>({})
+  const [panelHeight, setPanelHeight] = useState(defaultPanelHeight)
+
+  const addBottomPanelTab = useCallback(() => {
+    const nextIndex = tabs.length + 1
+    const title = `Token官网 ${nextIndex}`
+    const nextTab = {
+      id: `terminal-${Date.now()}`,
+      title,
+      terminalValue: `leo@huizhi001 ${title} % `,
+    }
+
+    setTabs((currentTabs) => [...currentTabs, nextTab])
+    setActiveTabId(nextTab.id)
+  }, [tabs.length])
+
+  const closeBottomPanelTab = useCallback(
+    (tabId: string) => {
+      setTabs((currentTabs) => {
+        if (currentTabs.length <= 1) {
+          onClose()
+          return currentTabs
+        }
+
+        const closedTabIndex = currentTabs.findIndex((tab) => tab.id === tabId)
+        const nextTabs = currentTabs.filter((tab) => tab.id !== tabId)
+
+        if (tabId === activeTabId) {
+          const nextActiveTab = nextTabs[Math.max(0, Math.min(closedTabIndex, nextTabs.length - 1))]
+          setActiveTabId(nextActiveTab.id)
+        }
+
+        return nextTabs
+      })
+    },
+    [activeTabId, onClose],
+  )
+
+  const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0]
+  const updateActiveTerminalValue = useCallback(
+    (value: string) => {
+      setTabs((currentTabs) =>
+        currentTabs.map((tab) => (tab.id === activeTabId ? { ...tab, terminalValue: value } : tab)),
+      )
+    },
+    [activeTabId],
+  )
+
+  const setTabItemRef = useCallback((tabId: string, element: HTMLDivElement | null) => {
+    if (element) {
+      tabItemRefs.current.set(tabId, element)
+      return
+    }
+
+    tabItemRefs.current.delete(tabId)
+  }, [])
+
+  useLayoutEffect(() => {
+    const measureTabItems = () => {
+      const nextWidths: Record<string, number> = {}
+
+      tabs.forEach((tab) => {
+        const element = tabItemRefs.current.get(tab.id)
+        if (!element) {
+          return
+        }
+
+        const previousWidth = element.style.width
+        element.style.width = 'max-content'
+        nextWidths[tab.id] = Math.max(50, Math.min(128, Math.ceil(element.getBoundingClientRect().width)))
+        element.style.width = previousWidth
+      })
+
+      setTabItemWidths((currentWidths) => {
+        const currentKeys = Object.keys(currentWidths)
+        const nextKeys = Object.keys(nextWidths)
+        const isSame =
+          currentKeys.length === nextKeys.length &&
+          nextKeys.every((key) => currentWidths[key] === nextWidths[key])
+
+        return isSame ? currentWidths : nextWidths
+      })
+    }
+
+    measureTabItems()
+
+    if (typeof ResizeObserver === 'undefined') {
+      return undefined
+    }
+
+    const resizeObserver = new ResizeObserver(measureTabItems)
+    tabItemRefs.current.forEach((element) => resizeObserver.observe(element))
+
+    return () => resizeObserver.disconnect()
+  }, [tabs])
+
+  const resizeBottomPanel = useCallback((pointerY: number) => {
+    const resizeStart = resizeStartRef.current
+
+    if (!resizeStart) {
+      return
+    }
+
+    const maxPanelHeight = Math.max(minPanelHeight, Math.floor(window.innerHeight / 2))
+    const nextHeight = resizeStart.height + resizeStart.pointerY - pointerY
+
+    setPanelHeight(Math.max(minPanelHeight, Math.min(maxPanelHeight, nextHeight)))
+  }, [])
+
+  const stopBottomPanelResize = useCallback(() => {
+    resizeStartRef.current = null
+    document.body.classList.remove('resizing-chat-bottom-panel')
+  }, [])
+
+  useEffect(() => {
+    const clampPanelHeight = () => {
+      const maxPanelHeight = Math.max(minPanelHeight, Math.floor(window.innerHeight / 2))
+
+      setPanelHeight((currentHeight) => Math.max(minPanelHeight, Math.min(maxPanelHeight, currentHeight)))
+    }
+
+    clampPanelHeight()
+    window.addEventListener('resize', clampPanelHeight)
+
+    return () => {
+      window.removeEventListener('resize', clampPanelHeight)
+      document.body.classList.remove('resizing-chat-bottom-panel')
+    }
+  }, [])
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      resizeBottomPanel(event.clientY)
+    }
+
+    const handlePointerEnd = () => {
+      stopBottomPanelResize()
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerEnd)
+    window.addEventListener('pointercancel', handlePointerEnd)
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerEnd)
+      window.removeEventListener('pointercancel', handlePointerEnd)
+    }
+  }, [resizeBottomPanel, stopBottomPanelResize])
+
+  const scrollBottomPanelTabs = useCallback((event: ReactWheelEvent<HTMLDivElement>) => {
+    const target = event.currentTarget
+
+    if (target.scrollWidth <= target.clientWidth) {
+      return
+    }
+
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY
+
+    if (delta === 0) {
+      return
+    }
+
+    event.preventDefault()
+    target.scrollLeft += delta
+  }, [])
+
+  const startBottomPanelResize = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) {
+        return
+      }
+
+      event.preventDefault()
+      resizeStartRef.current = {
+        pointerY: event.clientY,
+        height: panelHeight,
+      }
+      document.body.classList.add('resizing-chat-bottom-panel')
+      event.currentTarget.setPointerCapture(event.pointerId)
+    },
+    [panelHeight],
+  )
+
+  const moveBottomPanelResize = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      resizeBottomPanel(event.clientY)
+    },
+    [resizeBottomPanel],
+  )
+
+  return (
+    <section
+      className="chat-bottom-panel"
+      aria-label="底部面板"
+      style={{ '--chat-bottom-panel-height': `${panelHeight}px` } as CSSProperties}
+    >
+      <div
+        className="chat-bottom-panel-resize-handle"
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="调整底部面板高度"
+        onPointerDown={startBottomPanelResize}
+        onPointerMove={moveBottomPanelResize}
+        onPointerUp={stopBottomPanelResize}
+        onPointerCancel={stopBottomPanelResize}
+      />
+      <div className="chat-bottom-panel-header">
+        <div className="chat-bottom-panel-tabs" aria-label="底部面板标签组">
+          <div
+            className="chat-bottom-panel-tab"
+            role="tablist"
+            aria-label="底部面板标签"
+            onWheel={scrollBottomPanelTabs}
+          >
+            {tabs.map((tab) => {
+              const isActive = tab.id === activeTabId
+
+              return (
+                <div
+                  key={tab.id}
+                  ref={(element) => setTabItemRef(tab.id, element)}
+                  className={`chat-bottom-panel-tab-item${isActive ? ' active' : ''}`}
+                  role="tab"
+                  tabIndex={0}
+                  aria-selected={isActive}
+                  style={tabItemWidths[tab.id] ? { width: `${tabItemWidths[tab.id]}px` } : undefined}
+                  title={tab.title}
+                  onClick={() => setActiveTabId(tab.id)}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') {
+                      return
+                    }
+
+                    event.preventDefault()
+                    setActiveTabId(tab.id)
+                  }}
+                >
+                  <FigmaIcon icon={chatPanelSquareCodeIcon} />
+                  <span className="chat-bottom-panel-tab-label">{tab.title}</span>
+                  <span className="chat-bottom-panel-tab-close-mask">
+                    <button
+                      className="chat-bottom-panel-tab-close"
+                      type="button"
+                      aria-label={`关闭 ${tab.title}`}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        closeBottomPanelTab(tab.id)
+                      }}
+                    >
+                      <FigmaIcon icon={chatPanelTabCloseIcon} />
+                    </button>
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          <div className="chat-bottom-panel-add-group">
+            <button
+              className="chat-bottom-panel-add"
+              type="button"
+              aria-label="新建底部面板"
+              onClick={addBottomPanelTab}
+            >
+              <FigmaIcon icon={plusIcon} />
+            </button>
+          </div>
+        </div>
+        <div className="chat-bottom-panel-close">
+          <button className="chat-bottom-panel-close-button" type="button" aria-label="关闭底部面板" onClick={onClose}>
+            <FigmaIcon icon={xIcon} />
+          </button>
+        </div>
+      </div>
+      <div className="chat-bottom-panel-body">
+        <textarea
+          className="chat-bottom-panel-terminal"
+          aria-label={`${activeTab.title} 终端输入`}
+          spellCheck={false}
+          value={activeTab.terminalValue}
+          onChange={(event) => updateActiveTerminalValue(event.target.value)}
+        />
+      </div>
+    </section>
+  )
+}
+
 function Content({
   activeView,
   activeSettingsSection,
@@ -7766,6 +8227,8 @@ function Content({
   onSendMessage,
   isChatRightPanelOpen,
   newChatFocusNonce,
+  isChatBottomPanelOpen,
+  onToggleChatBottomPanel,
 }: {
   activeView: AppView
   activeSettingsSection: SettingsSection
@@ -7792,6 +8255,8 @@ function Content({
   onSendMessage: (message: string) => Promise<void>
   isChatRightPanelOpen: boolean
   newChatFocusNonce: number
+  isChatBottomPanelOpen: boolean
+  onToggleChatBottomPanel: () => void
 }) {
   const hasChat = messages.length > 0 || isSending || error
   const [chatComposerHeight, setChatComposerHeight] = useState(COMPOSER_MIN_HEIGHT)
@@ -7855,34 +8320,43 @@ function Content({
   }
 
   return (
-    <main className={`content-panel content-panel-chat${isChatRightPanelOpen ? ' has-right-panel' : ''}`}>
-      <div className={`chat-primary-pane${isChatRightPanelOpen ? ' panel-open' : ''}`}>
-        <section
-          className={`welcome-panel ${hasChat ? 'has-chat' : ''}`}
-          style={{ '--chat-composer-height': `${chatComposerHeight}px` } as CSSProperties}
-        >
-          {hasChat ? (
-            <ChatThread
-              conversationId={activeConversationId}
-              messages={messages}
-              isSending={isSending}
-              error={error}
-              scrollTop={chatScrollTop}
-              onScrollPositionChange={onChatScrollPositionChange}
-            />
-          ) : (
-            <h1>今天想做点什么？</h1>
-          )}
-          <PromptComposer
-            hasChat={Boolean(hasChat)}
-            onSendMessage={onSendMessage}
-            isSending={isSending}
-            onHeightChange={setChatComposerHeight}
-            newChatFocusNonce={newChatFocusNonce}
-          />
-        </section>
+    <main
+      className={`content-panel content-panel-chat${isChatRightPanelOpen ? ' has-right-panel' : ''}${
+        isChatBottomPanelOpen ? ' has-bottom-panel' : ''
+      }`}
+    >
+      <div className="chat-workbench">
+        <div className="chat-workbench-main">
+          <div className={`chat-primary-pane${isChatRightPanelOpen ? ' panel-open' : ''}`}>
+            <section
+              className={`welcome-panel ${hasChat ? 'has-chat' : ''}`}
+              style={{ '--chat-composer-height': `${chatComposerHeight}px` } as CSSProperties}
+            >
+              {hasChat ? (
+                <ChatThread
+                  conversationId={activeConversationId}
+                  messages={messages}
+                  isSending={isSending}
+                  error={error}
+                  scrollTop={chatScrollTop}
+                  onScrollPositionChange={onChatScrollPositionChange}
+                />
+              ) : (
+                <h1>今天想做点什么？</h1>
+              )}
+              <PromptComposer
+                hasChat={Boolean(hasChat)}
+                onSendMessage={onSendMessage}
+                isSending={isSending}
+                onHeightChange={setChatComposerHeight}
+                newChatFocusNonce={newChatFocusNonce}
+              />
+            </section>
+          </div>
+          <ChatRightPanel isOpen={isChatRightPanelOpen} />
+        </div>
+        {isChatBottomPanelOpen ? <ChatBottomPanel onClose={onToggleChatBottomPanel} /> : null}
       </div>
-      <ChatRightPanel isOpen={isChatRightPanelOpen} />
     </main>
   )
 }
@@ -7947,6 +8421,7 @@ function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isChatRightPanelOpen, setIsChatRightPanelOpen] = useState(false)
   const [newChatFocusNonce, setNewChatFocusNonce] = useState(0)
+  const [isChatBottomPanelOpen, setIsChatBottomPanelOpen] = useState(false)
   const [activeView, setActiveView] = useState<AppView>('chat')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [conversations, setConversations] = useState<ConversationRecord[]>([])
@@ -7994,6 +8469,7 @@ function App() {
     isSidebarCollapsed ? 'sidebar-collapsed' : '',
     isWindowFullscreen ? 'window-fullscreen' : '',
     activeView === 'chat' && isChatRightPanelOpen ? 'chat-right-panel-open' : '',
+    activeView === 'chat' && isChatBottomPanelOpen ? 'chat-bottom-panel-open' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -8402,9 +8878,11 @@ function App() {
         fileLibraryTitlebar={fileLibraryTitlebar}
         settingsTitlebar={settingsTitlebar}
         isChatRightPanelOpen={isChatRightPanelOpen}
+        isChatBottomPanelOpen={isChatBottomPanelOpen}
         onPlatformTitleSwitchToggle={togglePlatformFromTitlebar}
         onConversationTitleRename={renameActiveConversation}
         onConversationTitleToast={showAppToast}
+        onToggleChatBottomPanel={() => setIsChatBottomPanelOpen((isOpen) => !isOpen)}
         onToggleChatRightPanel={() => setIsChatRightPanelOpen((isOpen) => !isOpen)}
         onToggleSidebar={() => setIsSidebarCollapsed((isCollapsed) => !isCollapsed)}
       />
@@ -8434,6 +8912,8 @@ function App() {
         onSendMessage={sendMessage}
         isChatRightPanelOpen={isChatRightPanelOpen}
         newChatFocusNonce={newChatFocusNonce}
+        isChatBottomPanelOpen={isChatBottomPanelOpen}
+        onToggleChatBottomPanel={() => setIsChatBottomPanelOpen((isOpen) => !isOpen)}
       />
       {isSearchOpen ? (
         <SearchDialog

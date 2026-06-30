@@ -628,6 +628,10 @@ button {
   box-shadow: inset 0 -1px 0 #f3f3f3;
 }
 
+.sidebar-collapsed .global-titlebar.chat-titlebar .global-titlebar-left {
+  box-shadow: inset 0 -1px 0 #f3f3f3;
+}
+
 .sidebar-collapsed .global-titlebar.has-platform-titlebar .global-titlebar-left {
   box-shadow: none;
 }
@@ -821,40 +825,80 @@ button {
   flex: 1 1 auto;
 }
 
+.global-titlebar-main.chat-titlebar-main:not(.chat-right-panel-open) {
+  box-shadow: inset 0 -1px 0 #f3f3f3;
+}
+
+.global-titlebar-main.chat-titlebar-main.chat-right-panel-open .global-titlebar-primary-group {
+  position: relative;
+}
+
+.global-titlebar-main.chat-titlebar-main.chat-right-panel-open .global-titlebar-primary-group::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: #f3f3f3;
+  content: '';
+  pointer-events: none;
+}
+
 .global-titlebar-secondary-group.chat-panel-titlebar-group {
   width: calc((100vw - var(--active-sidebar-width)) / 2);
   flex: 0 0 calc((100vw - var(--active-sidebar-width)) / 2);
   justify-content: space-between;
-  padding: 0 10px 0 0;
+  padding: 0;
+  box-shadow:
+    inset 1px 0 0 #f3f3f3,
+    inset 0 -1px 0 #f3f3f3;
 }
 
-.chat-panel-tabbar {
+.chat-panel-tabs {
+  width: auto;
   min-width: 0;
+  max-width: calc(100% - 84px);
   height: 48px;
+  flex: 0 1 auto;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  gap: 0;
   overflow: hidden;
 }
 
 .chat-panel-tab-list {
-  width: 262px;
+  width: auto;
   min-width: 0;
   height: 48px;
+  flex: 0 1 auto;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px;
-  overflow: hidden;
+  gap: 4px;
+  padding: 0 4px 0 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+
+.chat-panel-tab-list::-webkit-scrollbar {
+  display: none;
 }
 
 .chat-panel-tab {
+  --tab-close-mask-bg: #ffffff;
   --fill-0: #999999;
   --stroke-0: #999999;
-  min-width: 0;
+  position: relative;
+  width: max-content;
+  min-width: 50px;
+  max-width: 128px;
   height: 28px;
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  justify-content: flex-start;
   padding: 0 8px;
   overflow: hidden;
   color: #999999;
@@ -862,17 +906,8 @@ button {
   cursor: pointer;
 }
 
-.chat-panel-tab:first-child {
-  width: 128px;
-  flex: 0 0 128px;
-}
-
-.chat-panel-tab:nth-child(2) {
-  width: 106px;
-  flex: 0 0 106px;
-}
-
 .chat-panel-tab:hover {
+  --tab-close-mask-bg: #f9f9f9;
   --fill-0: #000000;
   --stroke-0: #000000;
   color: #000000;
@@ -881,6 +916,7 @@ button {
 
 .chat-panel-tab.active,
 .chat-panel-tab:active {
+  --tab-close-mask-bg: #f3f3f3;
   --fill-0: #000000;
   --stroke-0: #000000;
   color: #000000;
@@ -895,8 +931,10 @@ button {
   flex-basis: 14px;
 }
 
-.chat-panel-tab span {
+.chat-panel-tab-label {
   min-width: 0;
+  max-width: 92px;
+  flex: 0 1 auto;
   overflow: hidden;
   font-size: 12px;
   font-weight: 400;
@@ -904,6 +942,72 @@ button {
   letter-spacing: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.chat-panel-tab-close-mask {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    var(--tab-close-mask-bg) 20%,
+    var(--tab-close-mask-bg) 100%
+  );
+}
+
+.chat-panel-tab:hover .chat-panel-tab-close-mask {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.chat-panel-tab-close {
+  --fill-0: #ffffff;
+  --stroke-0: #ffffff;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: #ffffff;
+  line-height: 0;
+  background: #999999;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.chat-panel-tab-close:hover {
+  background: #666666;
+}
+
+.chat-panel-tab-close .figma-icon {
+  width: 10px;
+  height: 10px;
+  min-width: 10px;
+  max-width: 10px;
+  flex: 0 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.chat-panel-tab-close .figma-icon svg {
+  display: block;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
 }
 
 .chat-panel-tab-add-group {
@@ -915,15 +1019,22 @@ button {
 }
 
 .chat-panel-tab-add {
+  --fill-0: #999999;
+  --stroke-0: #999999;
   width: 28px;
   height: 28px;
+  color: #999999;
 }
 
-.global-titlebar-actions {
-  height: 28px;
+.chat-panel-titlebar-controls {
+  width: auto;
+  height: 48px;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 8px;
+  box-sizing: content-box;
+  padding: 0 10px;
 }
 
 .global-titlebar-scheduled-create {
@@ -1787,8 +1898,31 @@ button {
 }
 
 .content-panel-chat {
+  flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
+  overflow: hidden;
+}
+
+.chat-workbench {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+.chat-workbench-main {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-start;
+  overflow: hidden;
 }
 
 .chat-primary-pane {
@@ -1939,6 +2073,309 @@ button {
   flex: 1 1 auto;
   overflow: auto;
   background: #ffffff;
+}
+
+.chat-bottom-panel {
+  position: relative;
+  width: 100%;
+  height: var(--chat-bottom-panel-height, 226px);
+  min-height: 160px;
+  flex: 0 0 var(--chat-bottom-panel-height, 226px);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.chat-bottom-panel-resize-handle {
+  position: absolute;
+  z-index: 4;
+  top: -4px;
+  right: 0;
+  left: 0;
+  height: 9px;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.chat-bottom-panel-resize-handle::after {
+  position: absolute;
+  top: 4px;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: #f3f3f3;
+  content: '';
+}
+
+.chat-bottom-panel-resize-handle:hover::after,
+.chat-bottom-panel-resize-handle:active::after,
+body.resizing-chat-bottom-panel .chat-bottom-panel-resize-handle::after {
+  background: #e5e5e5;
+}
+
+body.resizing-chat-bottom-panel,
+body.resizing-chat-bottom-panel * {
+  cursor: ns-resize;
+  user-select: none;
+}
+
+.chat-bottom-panel-header {
+  width: 100%;
+  height: 48px;
+  min-height: 48px;
+  flex: 0 0 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+}
+
+.chat-bottom-panel-tabs {
+  width: auto;
+  min-width: 0;
+  max-width: calc(100% - 48px);
+  height: 48px;
+  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  overflow: hidden;
+}
+
+.chat-bottom-panel-tab {
+  width: auto;
+  min-width: 0;
+  height: 48px;
+  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px 0 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+
+.chat-bottom-panel-tab::-webkit-scrollbar {
+  display: none;
+}
+
+.chat-bottom-panel-tab-item,
+.chat-bottom-panel-add,
+.chat-bottom-panel-close-button {
+  --fill-0: #999999;
+  --stroke-0: #999999;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #999999;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.chat-bottom-panel-tab-item {
+  --tab-close-mask-bg: #ffffff;
+  position: relative;
+  width: max-content;
+  min-width: 50px;
+  max-width: 128px;
+  flex: 0 0 auto;
+  gap: 6px;
+  justify-content: flex-start;
+  padding: 0 8px;
+  overflow: hidden;
+}
+
+.chat-bottom-panel-tab-item.active {
+  --tab-close-mask-bg: #f3f3f3;
+  --fill-0: #000000;
+  --stroke-0: #000000;
+  color: #000000;
+  background: #f3f3f3;
+}
+
+.chat-bottom-panel-tab-item .figma-icon {
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  max-width: 14px;
+  flex: 0 0 14px;
+}
+
+.chat-bottom-panel-add .figma-icon,
+.chat-bottom-panel-close-button .figma-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.chat-bottom-panel-tab-label {
+  min-width: 0;
+  max-width: 92px;
+  flex: 0 1 auto;
+  overflow: hidden;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-bottom-panel-tab-close-mask {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    var(--tab-close-mask-bg) 20%,
+    var(--tab-close-mask-bg) 100%
+  );
+}
+
+.chat-bottom-panel-tab-item:hover .chat-bottom-panel-tab-close-mask {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.chat-bottom-panel-tab-item:not(.active):hover {
+  --tab-close-mask-bg: #f9f9f9;
+}
+
+.chat-bottom-panel-tab-close {
+  --fill-0: #ffffff;
+  --stroke-0: #ffffff;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: #ffffff;
+  line-height: 0;
+  background: #999999;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.chat-bottom-panel-tab-close:hover {
+  background: #666666;
+}
+
+.chat-bottom-panel-tab-close .figma-icon {
+  width: 10px;
+  height: 10px;
+  min-width: 10px;
+  max-width: 10px;
+  flex: 0 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.chat-bottom-panel-tab-close .figma-icon svg {
+  display: block;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+}
+
+.chat-bottom-panel-add {
+  width: 28px;
+  min-width: 28px;
+  flex: 0 0 28px;
+  padding: 0 6px;
+}
+
+.chat-bottom-panel-add-group {
+  width: 28px;
+  height: 48px;
+  flex: 0 0 28px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.chat-bottom-panel-close {
+  width: auto;
+  height: 48px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 10px;
+}
+
+.chat-bottom-panel-close-button {
+  width: 28px;
+  flex: 0 0 28px;
+  padding: 0 6px;
+}
+
+.chat-bottom-panel-tab-item:not(.active):hover,
+.chat-bottom-panel-add:hover,
+.chat-bottom-panel-close-button:hover {
+  --fill-0: #000000;
+  --stroke-0: #000000;
+  color: #000000;
+  background: #f9f9f9;
+}
+
+.chat-bottom-panel-tab-item:not(.active):active,
+.chat-bottom-panel-add:active,
+.chat-bottom-panel-close-button:active {
+  --fill-0: #000000;
+  --stroke-0: #000000;
+  color: #000000;
+  background: #f3f3f3;
+}
+
+.chat-bottom-panel-body {
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: flex-start;
+  padding: 8px 16px;
+  overflow: auto;
+  color: #000000;
+}
+
+.chat-bottom-panel-terminal {
+  appearance: none;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  resize: none;
+  color: #000000;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  letter-spacing: 0;
+  white-space: pre-wrap;
+  overflow: auto;
+  caret-color: #000000;
 }
 
 .title-more-button {

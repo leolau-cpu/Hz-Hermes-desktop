@@ -6996,11 +6996,13 @@ function PromptComposer({
   onSendMessage,
   isSending,
   onHeightChange,
+  newChatFocusNonce,
 }: {
   hasChat: boolean
   onSendMessage: (message: string) => Promise<void>
   isSending: boolean
   onHeightChange?: (height: number) => void
+  newChatFocusNonce: number
 }) {
   const composerRef = useRef<HTMLFormElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -7109,6 +7111,20 @@ function PromptComposer({
       onHeightChange?.(composerHeight)
     }
   }, [composerHeight, hasChat, onHeightChange])
+
+  useEffect(() => {
+    if (hasChat) {
+      return undefined
+    }
+
+    const focusFrame = window.requestAnimationFrame(() => {
+      textareaRef.current?.focus()
+    })
+
+    return () => {
+      window.cancelAnimationFrame(focusFrame)
+    }
+  }, [hasChat, newChatFocusNonce])
 
   useEffect(() => {
     if (!activeToolbarAction) {
@@ -7695,9 +7711,9 @@ function ChatThread({
   )
 }
 
-function ChatRightPanel() {
+function ChatRightPanel({ isOpen }: { isOpen: boolean }) {
   return (
-    <section className="chat-right-panel" aria-label="右侧面板">
+    <section className="chat-right-panel" aria-label="右侧面板" aria-hidden={!isOpen} inert={!isOpen}>
       <div className="chat-right-panel-browser-toolbar">
         <div className="chat-right-panel-navigation" aria-label="页面导航">
           <button className="icon-button" type="button" aria-label="后退">
@@ -7749,6 +7765,7 @@ function Content({
   onChatScrollPositionChange,
   onSendMessage,
   isChatRightPanelOpen,
+  newChatFocusNonce,
 }: {
   activeView: AppView
   activeSettingsSection: SettingsSection
@@ -7774,6 +7791,7 @@ function Content({
   onChatScrollPositionChange: (conversationId: string, scrollTop: number) => void
   onSendMessage: (message: string) => Promise<void>
   isChatRightPanelOpen: boolean
+  newChatFocusNonce: number
 }) {
   const hasChat = messages.length > 0 || isSending || error
   const [chatComposerHeight, setChatComposerHeight] = useState(COMPOSER_MIN_HEIGHT)
@@ -7860,10 +7878,11 @@ function Content({
             onSendMessage={onSendMessage}
             isSending={isSending}
             onHeightChange={setChatComposerHeight}
+            newChatFocusNonce={newChatFocusNonce}
           />
         </section>
       </div>
-      {isChatRightPanelOpen ? <ChatRightPanel /> : null}
+      <ChatRightPanel isOpen={isChatRightPanelOpen} />
     </main>
   )
 }
@@ -7927,6 +7946,7 @@ function App() {
   const [language, setLanguage] = useState<'中文' | 'English'>('中文')
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isChatRightPanelOpen, setIsChatRightPanelOpen] = useState(false)
+  const [newChatFocusNonce, setNewChatFocusNonce] = useState(0)
   const [activeView, setActiveView] = useState<AppView>('chat')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [conversations, setConversations] = useState<ConversationRecord[]>([])
@@ -8080,6 +8100,7 @@ function App() {
 
   const startNewChat = useCallback(() => {
     setActiveView('chat')
+    setNewChatFocusNonce((nonce) => nonce + 1)
     activeConversationIdRef.current = null
     setMessages([])
     setChatError(null)
@@ -8412,6 +8433,7 @@ function App() {
         onChatScrollPositionChange={saveChatScrollPosition}
         onSendMessage={sendMessage}
         isChatRightPanelOpen={isChatRightPanelOpen}
+        newChatFocusNonce={newChatFocusNonce}
       />
       {isSearchOpen ? (
         <SearchDialog

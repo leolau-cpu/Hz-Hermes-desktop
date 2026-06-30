@@ -826,7 +826,6 @@ button {
   flex: 0 0 calc((100vw - var(--active-sidebar-width)) / 2);
   justify-content: space-between;
   padding: 0 10px 0 0;
-  box-shadow: inset 1px 0 0 #f3f3f3;
 }
 
 .chat-panel-tabbar {
@@ -1803,12 +1802,9 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.content-panel-chat.has-right-panel .chat-primary-pane,
-.chat-right-panel {
-  width: 50%;
-  flex: 1 1 50%;
+  transition:
+    flex-basis var(--sidebar-motion),
+    width var(--sidebar-motion);
 }
 
 .chat-primary-pane.panel-open {
@@ -1828,13 +1824,36 @@ button {
 
 .chat-right-panel {
   position: relative;
+  width: 0;
   min-width: 0;
   height: 100%;
+  flex: 0 0 0;
   display: flex;
   flex-direction: column;
   padding-top: 48px;
   overflow: hidden;
   background: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(16px);
+  transition:
+    flex-basis var(--sidebar-motion),
+    width var(--sidebar-motion),
+    opacity 180ms ease,
+    transform var(--sidebar-motion);
+}
+
+.content-panel-chat.has-right-panel .chat-primary-pane {
+  width: 50%;
+  flex: 1 1 50%;
+}
+
+.content-panel-chat.has-right-panel .chat-right-panel {
+  width: 50%;
+  flex: 1 1 50%;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
 }
 
 .chat-right-panel::before {
@@ -1991,8 +2010,6 @@ button {
   align-items: center;
   justify-content: flex-start;
   gap: 40px;
-  transition: width var(--sidebar-motion);
-  will-change: width;
 }
 
 .welcome-panel.has-chat {
@@ -2228,10 +2245,9 @@ button {
     inset 0 0 0 1px var(--color-border),
     0 8px 24px rgba(0, 0, 0, 0.05);
   transition:
-    width var(--sidebar-motion),
     height 160ms ease-out,
     box-shadow var(--sidebar-motion);
-  will-change: width, height;
+  will-change: height;
 }
 
 @media (prefers-reduced-motion: reduce) {

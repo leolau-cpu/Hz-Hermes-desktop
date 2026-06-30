@@ -1150,6 +1150,16 @@ const englishTextEntries = [
   ['输入消息，继续提问', 'Type a message to continue'],
   ['用/skill-creator 创建一个技能，你先问我技能应该做什么吧。', 'Use /skill-creator to create a skill. Ask me what it should do first.'],
   ['默认权限', 'Default permission'],
+  ['自动审查', 'Auto review'],
+  ['完全访问权限', 'Full access permission'],
+  ['完全访问', 'Full access'],
+  ['添加文件', 'Add file'],
+  ['添加文件夹', 'Add folder'],
+  ['添加图片', 'Add image'],
+  ['提示片段', 'Prompt snippets'],
+  ['代码审查', 'Code review'],
+  ['实现计划', 'Implementation plan'],
+  ['解释这段', 'Explain this'],
   ['正在思考…', 'Thinking...'],
   ['底部面板', 'Bottom panel'],
   ['右侧面板', 'Right panel'],
@@ -1413,6 +1423,7 @@ const englishTextEntries = [
   ['保存并重连', 'Save & Reconnect'],
   ['模型厂商', 'Model Vendor'],
   ['词元工场', 'Token Workshop'],
+  ['API端点', 'API Endpoint'],
   ['当前 Key 来自词元工场', 'Current key comes from Token Workshop'],
   ['去词元工场管理 Key >', 'Manage key in Token Workshop >'],
   ['对话已取消归档', 'Chat unarchived'],
@@ -2285,8 +2296,8 @@ function ChatPanelTabBar({ title, onClosePanel }: { title: string; onClosePanel:
   }, [])
 
   return (
-    <div className="chat-panel-tabs" aria-label="右侧面板标签组">
-      <div className="chat-panel-tab-list" role="tablist" onWheel={scrollChatPanelTabs}>
+    <div className="chat-panel-tabs" aria-label="右侧面板标签组" data-no-window-drag>
+      <div className="chat-panel-tab-list" role="tablist" data-no-window-drag onWheel={scrollChatPanelTabs}>
         {tabs.map((tab) => {
           const isActive = tab.id === activeTabId
 
@@ -2299,6 +2310,7 @@ function ChatPanelTabBar({ title, onClosePanel }: { title: string; onClosePanel:
               role="tab"
               tabIndex={0}
               aria-selected={isActive}
+              data-no-window-drag
               style={tabItemWidths[tab.id] ? { width: `${tabItemWidths[tab.id]}px` } : undefined}
               onClick={() => setActiveTabId(tab.id)}
               onKeyDown={(event) => {
@@ -2330,7 +2342,7 @@ function ChatPanelTabBar({ title, onClosePanel }: { title: string; onClosePanel:
           )
         })}
       </div>
-      <div className="chat-panel-tab-add-group">
+      <div className="chat-panel-tab-add-group" data-no-window-drag>
         <button
           className="icon-button chat-panel-tab-add"
           type="button"
@@ -4509,9 +4521,11 @@ function SkillsPage({
 function ScheduledTasksPage({
   onStartChat,
   onTitleDockedChange,
+  language,
 }: {
   onStartChat: () => void
   onTitleDockedChange: (isDocked: boolean) => void
+  language: '中文' | 'English'
 }) {
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false)
   const [isManualDialogOpen, setIsManualDialogOpen] = useState(false)
@@ -4536,6 +4550,7 @@ function ScheduledTasksPage({
   )
   const canCreateScheduledTask = scheduledTitle.trim().length > 0 && scheduledPrompt.trim().length > 0
   const enabledScheduledTaskCount = scheduledTasks.filter((task) => task.enabled).length
+  const isEnglish = language === 'English'
 
   const updateTitleDocked = useCallback(() => {
     const scrollTop = scheduledPageRef.current?.scrollTop ?? 0
@@ -4689,10 +4704,14 @@ function ScheduledTasksPage({
           <div className="scheduled-heading">
             <div className="scheduled-title">
               <h1>定时任务</h1>
-              <p>
+              <p data-translation-skip="true">
                 {scheduledTasks.length > 0
-                  ? `已启用${enabledScheduledTaskCount}个定时任务，共${scheduledTasks.length}个`
-                  : '暂无定时任务，可点击右侧按钮创建'}
+                  ? isEnglish
+                    ? `${enabledScheduledTaskCount} of ${scheduledTasks.length} scheduled tasks enabled`
+                    : `已启用${enabledScheduledTaskCount}个定时任务，共${scheduledTasks.length}个`
+                  : isEnglish
+                    ? 'No scheduled tasks. Use the button on the right to create one.'
+                    : '暂无定时任务，可点击右侧按钮创建'}
               </p>
             </div>
             <div className="scheduled-tools" ref={createMenuRef}>
@@ -4954,6 +4973,7 @@ function SettingsPage({
       : 'model'
   const config = settingsPageConfigs[visibleSection]
   const selectRows = config.selectRows ?? []
+  const isEnglish = language === 'English'
   const [openSelectMenu, setOpenSelectMenu] = useState<string | null>(null)
   const [gatewayMode, setGatewayMode] = useState<SettingsGatewayMode>('local')
   const [gatewayRemoteUrl, setGatewayRemoteUrl] = useState('')
@@ -5498,7 +5518,7 @@ function SettingsPage({
         <span className="settings-api-key-static">词元工场</span>
       </div>
       <div className="settings-api-key-row">
-        <span>API端点</span>
+        <span data-translation-skip="true">{isEnglish ? 'API Endpoint' : 'API端点'}</span>
         <span className="settings-api-key-static">https:// api.agentsyun.com/relay/v1</span>
       </div>
       <div className="settings-api-key-row settings-api-key-row-expanded">
@@ -7158,12 +7178,14 @@ function PromptComposer({
   isSending,
   onHeightChange,
   newChatFocusNonce,
+  language,
 }: {
   hasChat: boolean
   onSendMessage: (message: string) => Promise<void>
   isSending: boolean
   onHeightChange?: (height: number) => void
   newChatFocusNonce: number
+  language: '中文' | 'English'
 }) {
   const composerRef = useRef<HTMLFormElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -7187,6 +7209,7 @@ function PromptComposer({
   const [, setSelectedComposerSkill] = useState<string | null>(null)
   const [, setSelectedComposerEmployee] = useState<string | null>(null)
   const [composerModel, setComposerModel] = useState('Qwen3.7-Plus')
+  const isEnglish = language === 'English'
 
   const addPopoverStyle = useFixedFloatingPopoverPlacement(
     activeToolbarAction === 'add',
@@ -7430,6 +7453,7 @@ function PromptComposer({
   const selectedPermission = composerPermissionOptions.find(
     (option) => option.value === permissionMode,
   )
+  const selectedPermissionButtonLabel = selectedPermission?.buttonLabel ?? '默认权限'
 
   const composerStyle = {
     '--composer-height': `${composerHeight}px`,
@@ -7503,7 +7527,9 @@ function PromptComposer({
                   >
                     <span className="composer-popover-option-surface">
                       <FigmaIcon icon={option.icon} />
-                      <span className="composer-popover-option-label">{option.label}</span>
+                      <span className="composer-popover-option-label" data-translation-skip="true">
+                        {isEnglish ? translateToEnglish(option.label) : option.label}
+                      </span>
                     </span>
                   </button>
                 ))}
@@ -7521,7 +7547,9 @@ function PromptComposer({
                 >
                   <span className="composer-popover-option-surface">
                     <FigmaIcon icon={composerSnippetIcon} />
-                    <span className="composer-popover-option-label">提示片段</span>
+                    <span className="composer-popover-option-label" data-translation-skip="true">
+                      {isEnglish ? 'Prompt snippets' : '提示片段'}
+                    </span>
                     <span className="composer-popover-option-chevron">
                       <FigmaIcon icon={chevronRightIcon} />
                     </span>
@@ -7547,7 +7575,9 @@ function PromptComposer({
                   >
                     <span className="composer-popover-option-surface">
                       <FigmaIcon icon={snippet.icon} />
-                      <span className="composer-popover-option-label">{snippet.label}</span>
+                      <span className="composer-popover-option-label" data-translation-skip="true">
+                        {isEnglish ? translateToEnglish(snippet.label) : snippet.label}
+                      </span>
                     </span>
                   </button>
                 ))}
@@ -7567,7 +7597,9 @@ function PromptComposer({
               onClick={() => toggleToolbarAction('permission')}
             >
               <FigmaIcon icon={selectedPermission?.icon ?? composerPermissionDefaultIcon} inheritColor />
-              <span>{selectedPermission?.buttonLabel ?? '默认权限'}</span>
+              <span data-translation-skip="true">
+                {isEnglish ? translateToEnglish(selectedPermissionButtonLabel) : selectedPermissionButtonLabel}
+              </span>
               <FigmaIcon icon={chevronDownIcon} inheritColor />
             </button>
             {portalRoot && activeToolbarAction === 'permission'
@@ -7592,7 +7624,9 @@ function PromptComposer({
                     >
                       <span className="composer-popover-option-surface">
                         <FigmaIcon icon={option.icon} />
-                        <span className="composer-popover-option-label">{option.label}</span>
+                        <span className="composer-popover-option-label" data-translation-skip="true">
+                          {isEnglish ? translateToEnglish(option.label) : option.label}
+                        </span>
                         {isSelected ? (
                           <span className="composer-popover-check">
                             <FigmaIcon icon={settingsCheckIcon} />
@@ -7618,7 +7652,7 @@ function PromptComposer({
               onClick={() => toggleToolbarAction('skills')}
             >
               <FigmaIcon icon={composerSkillIcon} />
-              <span>技能</span>
+              <span data-translation-skip="true">{isEnglish ? 'Skills' : '技能'}</span>
               <FigmaIcon icon={chevronDownIcon} />
             </button>
             {portalRoot && activeToolbarAction === 'skills'
@@ -7650,7 +7684,9 @@ function PromptComposer({
                         >
                           {initial}
                         </span>
-                        <span className="composer-popover-option-label">{skill.title}</span>
+                        <span className="composer-popover-option-label" data-translation-skip="true">
+                          {isEnglish ? translateToEnglish(skill.title) : skill.title}
+                        </span>
                       </span>
                     </button>
                   )
@@ -7671,7 +7707,7 @@ function PromptComposer({
               onClick={() => toggleToolbarAction('employees')}
             >
               <FigmaIcon icon={composerEmployeeIcon} />
-              <span>员工</span>
+              <span data-translation-skip="true">{isEnglish ? 'Employees' : '员工'}</span>
               <FigmaIcon icon={chevronDownIcon} />
             </button>
             {portalRoot && activeToolbarAction === 'employees'
@@ -7698,7 +7734,9 @@ function PromptComposer({
                         alt=""
                         aria-hidden="true"
                       />
-                      <span className="composer-popover-option-label">{employee.title}</span>
+                      <span className="composer-popover-option-label" data-translation-skip="true">
+                        {isEnglish ? translateToEnglish(employee.title) : employee.title}
+                      </span>
                     </span>
                   </button>
                 ))}
@@ -7901,7 +7939,7 @@ function ChatRightPanel({ isOpen }: { isOpen: boolean }) {
   )
 }
 
-function ChatBottomPanel({ onClose }: { onClose: () => void }) {
+function ChatBottomPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const minPanelHeight = 160
   const defaultPanelHeight = 226
   const [tabs, setTabs] = useState(() => [
@@ -8098,17 +8136,12 @@ function ChatBottomPanel({ onClose }: { onClose: () => void }) {
     [panelHeight],
   )
 
-  const moveBottomPanelResize = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      resizeBottomPanel(event.clientY)
-    },
-    [resizeBottomPanel],
-  )
-
   return (
     <section
       className="chat-bottom-panel"
       aria-label="底部面板"
+      aria-hidden={!isOpen}
+      inert={!isOpen}
       style={{ '--chat-bottom-panel-height': `${panelHeight}px` } as CSSProperties}
     >
       <div
@@ -8117,7 +8150,6 @@ function ChatBottomPanel({ onClose }: { onClose: () => void }) {
         aria-orientation="horizontal"
         aria-label="调整底部面板高度"
         onPointerDown={startBottomPanelResize}
-        onPointerMove={moveBottomPanelResize}
         onPointerUp={stopBottomPanelResize}
         onPointerCancel={stopBottomPanelResize}
       />
@@ -8289,6 +8321,7 @@ function Content({
         <ScheduledTasksPage
           onStartChat={onStartNewChat}
           onTitleDockedChange={onScheduledTitleDockedChange}
+          language={language}
         />
       </main>
     )
@@ -8350,12 +8383,13 @@ function Content({
                 isSending={isSending}
                 onHeightChange={setChatComposerHeight}
                 newChatFocusNonce={newChatFocusNonce}
+                language={language}
               />
             </section>
           </div>
           <ChatRightPanel isOpen={isChatRightPanelOpen} />
         </div>
-        {isChatBottomPanelOpen ? <ChatBottomPanel onClose={onToggleChatBottomPanel} /> : null}
+        <ChatBottomPanel isOpen={isChatBottomPanelOpen} onClose={onToggleChatBottomPanel} />
       </div>
     </main>
   )

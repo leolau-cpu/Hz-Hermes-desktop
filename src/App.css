@@ -1706,7 +1706,8 @@ button {
 
 .nav-list-row:hover,
 .conversation-row:hover,
-.conversation-row.active {
+.conversation-row.active,
+.project-subgroup-list .chat-list-row.active:not(.project-subgroup-empty-row) {
   background: #eaeaea;
   color: #000000;
 }
@@ -2909,11 +2910,12 @@ body.resizing-chat-bottom-panel * {
   top: 0;
   right: 0;
   bottom: 0;
-  width: calc(100% + var(--chat-native-scrollbar-width));
+  width: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
   padding: 0;
+  scrollbar-width: none;
 }
 
 .chat-thread-content {
@@ -2922,24 +2924,42 @@ body.resizing-chat-bottom-panel * {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  margin-left: var(--chat-native-scrollbar-width);
   padding: 16px 16px calc(var(--chat-composer-height, 112px) + 32px);
 }
 
 .chat-thread::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.chat-scrollbar {
+  position: absolute;
+  top: 4px;
+  right: 0;
+  bottom: 4px;
+  z-index: 2;
   width: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease;
 }
 
-.chat-thread::-webkit-scrollbar-track {
-  background: transparent;
+.chat-scrollbar.visible {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-.chat-thread::-webkit-scrollbar-thumb {
+.chat-scrollbar-thumb {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  width: 4px;
   min-height: 24px;
-  background-color: #e5e5e5;
-  background-clip: padding-box;
-  border: 2px solid transparent;
   border-radius: 999px;
+  background: #e5e5e5;
+  cursor: default;
+  will-change: transform;
 }
 
 .chat-row {

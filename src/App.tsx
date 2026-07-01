@@ -2700,7 +2700,10 @@ function ProjectSection({
   projects,
   now,
   isOpen,
+  openProjectGroups,
+  activeChatTarget,
   onToggle,
+  onToggleProjectGroup,
   onCreateBlankProject,
   onChooseExistingProjectFolder,
   onCreateProjectConversation,
@@ -2716,7 +2719,10 @@ function ProjectSection({
   projects: ProjectRecord[]
   now: number
   isOpen: boolean
+  openProjectGroups: Record<string, boolean>
+  activeChatTarget: ActiveChatTarget | null
   onToggle: () => void
+  onToggleProjectGroup: (projectId: string) => void
   onCreateBlankProject: () => void
   onChooseExistingProjectFolder: () => void
   onCreateProjectConversation: (projectId: string) => void
@@ -2729,9 +2735,6 @@ function ProjectSection({
   onRequestRenameProjectConversation: (projectId: string, conversation: ProjectConversationRecord) => void
   onRequestDeleteProjectConversation: (projectId: string, conversation: ProjectConversationRecord) => void
 }) {
-  const [openProjectGroups, setOpenProjectGroups] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(projects.map((item) => [item.id, true])),
-  )
   const [projectTitleMenu, setProjectTitleMenu] = useState<'more' | 'create' | null>(null)
   const [isProjectSortMenuOpen, setIsProjectSortMenuOpen] = useState(false)
   const [openProjectGroupMenuId, setOpenProjectGroupMenuId] = useState<string | null>(null)
@@ -2782,29 +2785,6 @@ function ProjectSection({
     { left: 60, top: 34 },
     [openProjectChatMenuId],
   )
-  const toggleProjectGroup = (groupId: string) => {
-    setOpenProjectGroups((currentGroups) => ({
-      ...currentGroups,
-      [groupId]: !(currentGroups[groupId] ?? true),
-    }))
-  }
-
-  useEffect(() => {
-    setOpenProjectGroups((currentGroups) => {
-      let didChange = false
-      const nextGroups = projects.reduce<Record<string, boolean>>((groups, project) => {
-        groups[project.id] = currentGroups[project.id] ?? true
-        didChange = didChange || !(project.id in currentGroups)
-        return groups
-      }, {})
-
-      if (Object.keys(currentGroups).length !== Object.keys(nextGroups).length) {
-        didChange = true
-      }
-
-      return didChange ? nextGroups : currentGroups
-    })
-  }, [projects])
   const closeProjectTitleMenus = () => {
     setProjectTitleMenu(null)
     setIsProjectSortMenuOpen(false)
@@ -3134,13 +3114,13 @@ function ProjectSection({
                   aria-expanded={openProjectGroups[group.id] ?? true}
                   onClick={() => {
                     closeAllProjectMenus()
-                    toggleProjectGroup(group.id)
+                    onToggleProjectGroup(group.id)
                   }}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault()
                       closeAllProjectMenus()
-                      toggleProjectGroup(group.id)
+                      onToggleProjectGroup(group.id)
                     }
                   }}
                 >
@@ -3275,10 +3255,18 @@ function ProjectSection({
                           </div>
                         </div>
                       )
-                    : group.conversations.map((conversation) => (
+                    : group.conversations.map((conversation) => {
+                        const isActiveProjectConversation =
+                          activeChatTarget?.kind === 'project' &&
+                          activeChatTarget.projectId === group.id &&
+                          activeChatTarget.conversationId === conversation.id
+
+                        return (
                         <div className="nav-list-row-shell" key={conversation.id}>
                           <div
                             className={`nav-list-row project-list-row chat-list-row ${
+                              isActiveProjectConversation ? 'active' : ''
+                            } ${
                               openProjectChatMenuId === conversation.id ? 'has-open-menu' : ''
                             }`}
                             role="button"
@@ -3409,7 +3397,8 @@ function ProjectSection({
                             </div>,
                           ) : null}
                         </div>
-                      ))
+                        )
+                      })
                   }
                 </div>
               </div>
@@ -3430,7 +3419,10 @@ function PinnedSection({
   conversations,
   now,
   isOpen,
+  openProjectGroups,
+  activeChatTarget,
   onToggle,
+  onToggleProjectGroup,
   onCreateProjectConversation,
   onSelectProjectConversation,
   onSelectConversation,
@@ -3449,7 +3441,10 @@ function PinnedSection({
   conversations: PinnedConversationItem[]
   now: number
   isOpen: boolean
+  openProjectGroups: Record<string, boolean>
+  activeChatTarget: ActiveChatTarget | null
   onToggle: () => void
+  onToggleProjectGroup: (projectId: string) => void
   onCreateProjectConversation: (projectId: string) => void
   onSelectProjectConversation: (projectId: string, conversationId: string) => void
   onSelectConversation: (conversationId: string) => void
@@ -3464,9 +3459,6 @@ function PinnedSection({
   onRequestDeleteProjectConversation: (projectId: string, conversation: ProjectConversationRecord) => void
   onRequestDeleteConversation: (conversation: ConversationRecord) => void
 }) {
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(projects.map((project) => [project.id, true])),
-  )
   const [openMenu, setOpenMenu] = useState<
     | { kind: 'project'; id: string }
     | { kind: 'projectConversation'; id: string; projectId: string }
@@ -3484,23 +3476,6 @@ function PinnedSection({
     { left: openMenu?.kind === 'project' ? 28 : 60, top: 34 },
     [openMenu?.kind, openMenu?.id],
   )
-
-  useEffect(() => {
-    setOpenGroups((currentGroups) => {
-      let didChange = false
-      const nextGroups = projects.reduce<Record<string, boolean>>((groups, project) => {
-        groups[project.id] = currentGroups[project.id] ?? true
-        didChange = didChange || !(project.id in currentGroups)
-        return groups
-      }, {})
-
-      if (Object.keys(currentGroups).length !== Object.keys(nextGroups).length) {
-        didChange = true
-      }
-
-      return didChange ? nextGroups : currentGroups
-    })
-  }, [projects])
 
   useEffect(() => {
     if (!openMenu) {
@@ -3530,12 +3505,6 @@ function PinnedSection({
   }, [openMenu, openMenuKey])
 
   const closeAllPinnedMenus = () => setOpenMenu(null)
-  const toggleGroup = (projectId: string) => {
-    setOpenGroups((currentGroups) => ({
-      ...currentGroups,
-      [projectId]: !(currentGroups[projectId] ?? true),
-    }))
-  }
   const regularConversation = openMenu?.kind === 'regularConversation'
     ? conversations.find((item) => item.kind === 'regular' && item.conversation.id === openMenu.id)
     : undefined
@@ -3580,7 +3549,7 @@ function PinnedSection({
       <div className={`nav-section-list pinned-section-list ${isOpen ? 'expanded' : 'collapsed'}`} aria-hidden={!isOpen}>
         <div className="nav-section-list-inner">
           {projects.map((project) => {
-            const isProjectOpen = openGroups[project.id] ?? true
+            const isProjectOpen = openProjectGroups[project.id] ?? true
             const visibleConversations = project.conversations.filter((conversation) => !conversation.pinned)
 
             return (
@@ -3601,7 +3570,7 @@ function PinnedSection({
                     aria-expanded={isProjectOpen}
                     onClick={() => {
                       closeAllPinnedMenus()
-                      toggleGroup(project.id)
+                      onToggleProjectGroup(project.id)
                     }}
                   >
                     <FigmaIcon icon={isProjectOpen ? fileLibraryFolderOpenIcon : projectFolderClosedIcon} />
@@ -3648,10 +3617,18 @@ function PinnedSection({
                         </div>
                       </div>
                     ) : (
-                      visibleConversations.map((conversation) => (
+                      visibleConversations.map((conversation) => {
+                        const isActiveProjectConversation =
+                          activeChatTarget?.kind === 'project' &&
+                          activeChatTarget.projectId === project.id &&
+                          activeChatTarget.conversationId === conversation.id
+
+                        return (
                         <div className="nav-list-row-shell" key={conversation.id}>
                           <div
                             className={`nav-list-row project-list-row chat-list-row ${
+                              isActiveProjectConversation ? 'active' : ''
+                            } ${
                               openMenu?.kind === 'projectConversation' && openMenu.id === conversation.id
                                 ? 'has-open-menu'
                                 : ''
@@ -3693,7 +3670,8 @@ function PinnedSection({
                             </span>
                           </div>
                         </div>
-                      ))
+                        )
+                      })
                     )}
                   </div>
                 </div>
@@ -8442,6 +8420,7 @@ function Sidebar({
   conversations,
   now,
   activeView,
+  activeChatTarget,
   activeSettingsSection,
   onNewChat,
   onCreateBlankProject,
@@ -8472,6 +8451,7 @@ function Sidebar({
   conversations: ConversationRecord[]
   now: number
   activeView: AppView
+  activeChatTarget: ActiveChatTarget
   activeSettingsSection: SettingsSection
   onNewChat: AppActionHandler
   onCreateBlankProject: () => void
@@ -8501,6 +8481,7 @@ function Sidebar({
   const [isProjectSectionOpen, setIsProjectSectionOpen] = useState(true)
   const [isConversationSectionOpen, setIsConversationSectionOpen] = useState(true)
   const [isPinnedSectionOpen, setIsPinnedSectionOpen] = useState(true)
+  const [openProjectGroups, setOpenProjectGroups] = useState<Record<string, boolean>>({})
   const pinnedProjects = projects.filter((project) => project.pinned)
   const pinnedProjectConversations: PinnedConversationItem[] = projects.flatMap((project) =>
     project.conversations
@@ -8526,6 +8507,31 @@ function Sidebar({
       conversations: project.conversations.filter((conversation) => !conversation.pinned),
     }))
   const visibleConversations = conversations.filter((conversation) => !conversation.pinned)
+  const activeSidebarChatTarget = activeView === 'chat' ? activeChatTarget : null
+
+  useEffect(() => {
+    setOpenProjectGroups((currentGroups) => {
+      let didChange = false
+      const nextGroups = projects.reduce<Record<string, boolean>>((groups, project) => {
+        groups[project.id] = currentGroups[project.id] ?? true
+        didChange = didChange || !(project.id in currentGroups)
+        return groups
+      }, {})
+
+      if (Object.keys(currentGroups).length !== Object.keys(nextGroups).length) {
+        didChange = true
+      }
+
+      return didChange ? nextGroups : currentGroups
+    })
+  }, [projects])
+
+  const toggleProjectGroup = useCallback((projectId: string) => {
+    setOpenProjectGroups((currentGroups) => ({
+      ...currentGroups,
+      [projectId]: !(currentGroups[projectId] ?? true),
+    }))
+  }, [])
 
   if (activeView === 'settings') {
     return (
@@ -8571,7 +8577,10 @@ function Sidebar({
             conversations={pinnedConversations}
             now={now}
             isOpen={isPinnedSectionOpen}
+            openProjectGroups={openProjectGroups}
+            activeChatTarget={activeSidebarChatTarget}
             onToggle={() => setIsPinnedSectionOpen((isOpen) => !isOpen)}
+            onToggleProjectGroup={toggleProjectGroup}
             onCreateProjectConversation={onCreateProjectConversation}
             onSelectProjectConversation={onSelectProjectConversation}
             onSelectConversation={onSelectConversation}
@@ -8591,7 +8600,10 @@ function Sidebar({
           projects={visibleProjects}
           now={now}
           isOpen={isProjectSectionOpen}
+          openProjectGroups={openProjectGroups}
+          activeChatTarget={activeSidebarChatTarget}
           onToggle={() => setIsProjectSectionOpen((isOpen) => !isOpen)}
+          onToggleProjectGroup={toggleProjectGroup}
           onCreateBlankProject={onCreateBlankProject}
           onChooseExistingProjectFolder={onChooseExistingProjectFolder}
           onCreateProjectConversation={onCreateProjectConversation}
@@ -9943,15 +9955,78 @@ function ChatThread({
   onScrollPositionChange?: (conversationId: string, scrollTop: number) => void
 }) {
   const threadRef = useRef<HTMLDivElement>(null)
+  const scrollbarTrackRef = useRef<HTMLDivElement>(null)
   const savedScrollTopRef = useRef(scrollTop)
   const suppressNextAutoScrollRef = useRef(true)
+  const scrollbarHideTimeoutRef = useRef<number | null>(null)
+  const scrollbarDragRef = useRef({ startY: 0, startScrollTop: 0 })
+  const [scrollbarState, setScrollbarState] = useState({
+    isScrollable: false,
+    isVisible: false,
+    isDragging: false,
+    thumbHeight: 24,
+    thumbTop: 0,
+  })
   const latestMessageSignature = messages
     .map((message) => `${message.role}:${message.content.length}:${message.processedSeconds ?? ''}`)
     .join('|')
 
+  const clearScrollbarHideTimeout = useCallback(() => {
+    if (scrollbarHideTimeoutRef.current !== null) {
+      window.clearTimeout(scrollbarHideTimeoutRef.current)
+      scrollbarHideTimeoutRef.current = null
+    }
+  }, [])
+
+  const scheduleScrollbarHide = useCallback(() => {
+    clearScrollbarHideTimeout()
+    scrollbarHideTimeoutRef.current = window.setTimeout(() => {
+      setScrollbarState((currentState) =>
+        currentState.isDragging ? currentState : { ...currentState, isVisible: false },
+      )
+    }, 800)
+  }, [clearScrollbarHideTimeout])
+
+  const syncScrollbarState = useCallback((options: { reveal?: boolean } = {}) => {
+    const thread = threadRef.current
+
+    if (!thread) {
+      return
+    }
+
+    const scrollRange = thread.scrollHeight - thread.clientHeight
+    const nextIsScrollable = scrollRange > 1
+
+    if (!nextIsScrollable) {
+      setScrollbarState((currentState) => ({
+        ...currentState,
+        isScrollable: false,
+        isVisible: false,
+        thumbHeight: 24,
+        thumbTop: 0,
+      }))
+      return
+    }
+
+    const trackHeight = scrollbarTrackRef.current?.clientHeight ?? Math.max(0, thread.clientHeight - 8)
+    const thumbHeight = Math.max(24, Math.min(trackHeight, (trackHeight * trackHeight) / thread.scrollHeight))
+    const thumbTravel = Math.max(0, trackHeight - thumbHeight)
+    const thumbTop = scrollRange > 0 ? (thread.scrollTop / scrollRange) * thumbTravel : 0
+
+    setScrollbarState((currentState) => ({
+      ...currentState,
+      isScrollable: true,
+      isVisible: options.reveal ? true : currentState.isVisible,
+      thumbHeight,
+      thumbTop,
+    }))
+  }, [])
+
   useEffect(() => {
     savedScrollTopRef.current = scrollTop
   }, [scrollTop])
+
+  useEffect(() => () => clearScrollbarHideTimeout(), [clearScrollbarHideTimeout])
 
   useLayoutEffect(() => {
     const thread = threadRef.current
@@ -9962,7 +10037,42 @@ function ChatThread({
 
     suppressNextAutoScrollRef.current = true
     thread.scrollTop = savedScrollTopRef.current
-  }, [conversationId])
+    requestAnimationFrame(() => syncScrollbarState())
+  }, [conversationId, syncScrollbarState])
+
+  useLayoutEffect(() => {
+    syncScrollbarState()
+  }, [latestMessageSignature, isSending, error, syncScrollbarState])
+
+  useEffect(() => {
+    const handleResize = () => syncScrollbarState()
+
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [syncScrollbarState])
+
+  useLayoutEffect(() => {
+    const thread = threadRef.current
+
+    if (!thread || typeof ResizeObserver === 'undefined') {
+      return undefined
+    }
+
+    const resizeObserver = new ResizeObserver(() => syncScrollbarState())
+    resizeObserver.observe(thread)
+
+    if (thread.firstElementChild) {
+      resizeObserver.observe(thread.firstElementChild)
+    }
+
+    if (scrollbarTrackRef.current) {
+      resizeObserver.observe(scrollbarTrackRef.current)
+    }
+
+    return () => resizeObserver.disconnect()
+  }, [syncScrollbarState])
 
   useEffect(() => {
     const thread = threadRef.current
@@ -9990,7 +10100,73 @@ function ChatThread({
     }
 
     onScrollPositionChange?.(conversationId, thread.scrollTop)
-  }, [conversationId, onScrollPositionChange])
+    syncScrollbarState({ reveal: true })
+
+    if (!scrollbarState.isDragging) {
+      scheduleScrollbarHide()
+    }
+  }, [
+    conversationId,
+    onScrollPositionChange,
+    scheduleScrollbarHide,
+    scrollbarState.isDragging,
+    syncScrollbarState,
+  ])
+
+  const startScrollbarDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const thread = threadRef.current
+
+    if (!thread || !scrollbarState.isScrollable) {
+      return
+    }
+
+    event.preventDefault()
+    event.stopPropagation()
+    clearScrollbarHideTimeout()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    scrollbarDragRef.current = {
+      startY: event.clientY,
+      startScrollTop: thread.scrollTop,
+    }
+    setScrollbarState((currentState) => ({
+      ...currentState,
+      isVisible: true,
+      isDragging: true,
+    }))
+  }, [clearScrollbarHideTimeout, scrollbarState.isScrollable])
+
+  const dragScrollbar = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const thread = threadRef.current
+
+    if (!thread || !scrollbarState.isDragging) {
+      return
+    }
+
+    event.preventDefault()
+    const scrollRange = thread.scrollHeight - thread.clientHeight
+    const trackHeight = scrollbarTrackRef.current?.clientHeight ?? Math.max(0, thread.clientHeight - 8)
+    const thumbTravel = Math.max(1, trackHeight - scrollbarState.thumbHeight)
+    const dragDelta = event.clientY - scrollbarDragRef.current.startY
+    thread.scrollTop = scrollbarDragRef.current.startScrollTop + (dragDelta / thumbTravel) * scrollRange
+    syncScrollbarState({ reveal: true })
+  }, [scrollbarState.isDragging, scrollbarState.thumbHeight, syncScrollbarState])
+
+  const stopScrollbarDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!scrollbarState.isDragging) {
+      return
+    }
+
+    event.preventDefault()
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+    setScrollbarState((currentState) => ({
+      ...currentState,
+      isDragging: false,
+      isVisible: true,
+    }))
+    scheduleScrollbarHide()
+  }, [scheduleScrollbarHide, scrollbarState.isDragging])
 
   if (messages.length === 0 && !isSending && !error) {
     return null
@@ -9998,7 +10174,12 @@ function ChatThread({
 
   return (
     <div className="chat-thread-shell">
-      <div ref={threadRef} className="chat-thread" aria-live="polite" onScroll={saveScrollPosition}>
+      <div
+        ref={threadRef}
+        className="chat-thread"
+        aria-live="polite"
+        onScroll={saveScrollPosition}
+      >
         <div className="chat-thread-content">
           {messages.map((message, index) => (
             <div key={`${message.role}-${index}`} className={`chat-row ${message.role}`}>
@@ -10021,6 +10202,25 @@ function ChatThread({
           {error ? <div className="chat-error">{error}</div> : null}
         </div>
       </div>
+      {scrollbarState.isScrollable ? (
+        <div
+          ref={scrollbarTrackRef}
+          className={`chat-scrollbar${scrollbarState.isVisible || scrollbarState.isDragging ? ' visible' : ''}`}
+          aria-hidden="true"
+        >
+          <div
+            className="chat-scrollbar-thumb"
+            style={{
+              height: `${scrollbarState.thumbHeight}px`,
+              transform: `translateY(${scrollbarState.thumbTop}px)`,
+            }}
+            onPointerDown={startScrollbarDrag}
+            onPointerMove={dragScrollbar}
+            onPointerUp={stopScrollbarDrag}
+            onPointerCancel={stopScrollbarDrag}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -11763,6 +11963,7 @@ function App() {
         conversations={conversations}
         now={now}
         activeView={activeView}
+        activeChatTarget={activeChatTarget}
         activeSettingsSection={activeSettingsSection}
         onNewChat={startNewChat}
         onCreateBlankProject={openBlankProjectDialog}

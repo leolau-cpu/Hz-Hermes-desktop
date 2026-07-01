@@ -50,6 +50,22 @@ import panelBottomIcon from './assets/figma-icons/panel-bottom.svg?raw'
 import panelLeftIcon from './assets/figma-icons/panel-left.svg?raw'
 import panelRightIcon from './assets/figma-icons/panel-right.svg?raw'
 import plusIcon from './assets/figma-icons/plus.svg?raw'
+import projectChatMenuArchiveIcon from './assets/figma-icons/project-chat-menu-archive.svg?raw'
+import projectChatMenuCopyIcon from './assets/figma-icons/project-chat-menu-copy.svg?raw'
+import projectChatMenuPinIcon from './assets/figma-icons/project-chat-menu-pin.svg?raw'
+import projectChatMenuSquarePenIcon from './assets/figma-icons/project-chat-menu-square-pen.svg?raw'
+import projectChatMenuTrashIcon from './assets/figma-icons/project-chat-menu-trash.svg?raw'
+import projectChatMenuUploadIcon from './assets/figma-icons/project-chat-menu-upload.svg?raw'
+import projectCreateFolderPlusIcon from './assets/figma-icons/project-create-folder-plus.svg?raw'
+import projectFolderClosedIcon from './assets/figma-icons/project-folder-closed.svg?raw'
+import projectMenuArchiveIcon from './assets/figma-icons/project-menu-archive.svg?raw'
+import projectMenuFolderOpenIcon from './assets/figma-icons/project-menu-folder-open.svg?raw'
+import projectMenuPinIcon from './assets/figma-icons/project-menu-pin.svg?raw'
+import projectMenuSquarePenIcon from './assets/figma-icons/project-menu-square-pen.svg?raw'
+import projectMenuXIcon from './assets/figma-icons/project-menu-x.svg?raw'
+import projectTitleClockIcon from './assets/figma-icons/project-title-clock.svg?raw'
+import projectTitleFolderPlusIcon from './assets/figma-icons/project-title-folder-plus.svg?raw'
+import projectTitleMonitorSmartphoneIcon from './assets/figma-icons/project-title-monitor-smartphone.svg?raw'
 import searchIcon from './assets/figma-icons/search.svg?raw'
 import settingsIcon from './assets/figma-icons/settings.svg?raw'
 import arrowUpRightIcon from './assets/platform/arrow-up-right.svg?raw'
@@ -402,6 +418,170 @@ function useFixedSidePopoverPlacement(
   return style
 }
 
+function useProjectTitlePopoverPlacement(
+  isOpen: boolean,
+  titleRef: { current: HTMLElement | null },
+  popoverRef: { current: HTMLElement | null },
+  variant: 'more' | 'create' | 'sort',
+  deps: unknown[] = [],
+) {
+  const [style, setStyle] = useState<CSSProperties>({ visibility: 'hidden' })
+
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setStyle({ visibility: 'hidden' })
+      return undefined
+    }
+
+    let frame = 0
+    const offsets = {
+      more: { left: 28, top: 34 },
+      create: { left: 60, top: 34 },
+      sort: { left: 188, top: 82 },
+    }[variant]
+
+    const updatePlacement = () => {
+      const title = titleRef.current
+      const popover = popoverRef.current
+
+      if (!title || !popover) {
+        return
+      }
+
+      const titleRect = title.getBoundingClientRect()
+      const popoverRect = popover.getBoundingClientRect()
+      const desiredWidth = Math.ceil(popover.scrollWidth || popoverRect.width || 160)
+      const desiredHeight = Math.ceil(popover.scrollHeight || popoverRect.height)
+      const preferredTop = titleRect.top + offsets.top
+      const availableBelow = Math.max(
+        FLOATING_POPOVER_MIN_HEIGHT,
+        window.innerHeight - preferredTop - FLOATING_POPOVER_VIEWPORT_MARGIN,
+      )
+      const availableAbove = Math.max(
+        FLOATING_POPOVER_MIN_HEIGHT,
+        titleRect.top - FLOATING_POPOVER_GAP - FLOATING_POPOVER_VIEWPORT_MARGIN,
+      )
+      const shouldOpenDown = desiredHeight <= availableBelow || availableBelow >= availableAbove
+      const maxHeight = Math.floor(shouldOpenDown ? availableBelow : availableAbove)
+      const renderedHeight = Math.min(desiredHeight, maxHeight)
+      const left = Math.min(
+        window.innerWidth - FLOATING_POPOVER_VIEWPORT_MARGIN - desiredWidth,
+        Math.max(FLOATING_POPOVER_VIEWPORT_MARGIN, titleRect.left + offsets.left),
+      )
+      const top = shouldOpenDown
+        ? Math.max(FLOATING_POPOVER_VIEWPORT_MARGIN, preferredTop)
+        : Math.max(
+            FLOATING_POPOVER_VIEWPORT_MARGIN,
+            titleRect.top - FLOATING_POPOVER_GAP - renderedHeight,
+          )
+
+      setStyle({
+        position: 'fixed',
+        top: `${Math.round(top)}px`,
+        left: `${Math.round(left)}px`,
+        maxHeight: `${Math.max(FLOATING_POPOVER_MIN_HEIGHT, maxHeight)}px`,
+        overflowY: desiredHeight > maxHeight ? 'auto' : undefined,
+        visibility: 'visible',
+      })
+    }
+    const scheduleUpdate = () => {
+      window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(updatePlacement)
+    }
+
+    updatePlacement()
+    window.addEventListener('resize', scheduleUpdate)
+    window.addEventListener('scroll', scheduleUpdate, true)
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('resize', scheduleUpdate)
+      window.removeEventListener('scroll', scheduleUpdate, true)
+    }
+  }, [isOpen, variant, ...deps])
+
+  return style
+}
+
+function useOffsetPopoverPlacement(
+  isOpen: boolean,
+  anchorRef: { current: HTMLElement | null },
+  popoverRef: { current: HTMLElement | null },
+  offset: { left: number; top: number },
+  deps: unknown[] = [],
+) {
+  const [style, setStyle] = useState<CSSProperties>({ visibility: 'hidden' })
+
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setStyle({ visibility: 'hidden' })
+      return undefined
+    }
+
+    let frame = 0
+    const updatePlacement = () => {
+      const anchor = anchorRef.current
+      const popover = popoverRef.current
+
+      if (!anchor || !popover) {
+        return
+      }
+
+      const anchorRect = anchor.getBoundingClientRect()
+      const popoverRect = popover.getBoundingClientRect()
+      const desiredWidth = Math.ceil(popover.scrollWidth || popoverRect.width || 160)
+      const desiredHeight = Math.ceil(popover.scrollHeight || popoverRect.height)
+      const preferredTop = anchorRect.top + offset.top
+      const availableBelow = Math.max(
+        FLOATING_POPOVER_MIN_HEIGHT,
+        window.innerHeight - preferredTop - FLOATING_POPOVER_VIEWPORT_MARGIN,
+      )
+      const availableAbove = Math.max(
+        FLOATING_POPOVER_MIN_HEIGHT,
+        anchorRect.top - FLOATING_POPOVER_GAP - FLOATING_POPOVER_VIEWPORT_MARGIN,
+      )
+      const shouldOpenDown = desiredHeight <= availableBelow || availableBelow >= availableAbove
+      const maxHeight = Math.floor(shouldOpenDown ? availableBelow : availableAbove)
+      const renderedHeight = Math.min(desiredHeight, maxHeight)
+      const left = Math.min(
+        window.innerWidth - FLOATING_POPOVER_VIEWPORT_MARGIN - desiredWidth,
+        Math.max(FLOATING_POPOVER_VIEWPORT_MARGIN, anchorRect.left + offset.left),
+      )
+      const top = shouldOpenDown
+        ? Math.max(FLOATING_POPOVER_VIEWPORT_MARGIN, preferredTop)
+        : Math.max(
+            FLOATING_POPOVER_VIEWPORT_MARGIN,
+            anchorRect.top - FLOATING_POPOVER_GAP - renderedHeight,
+          )
+
+      setStyle({
+        position: 'fixed',
+        top: `${Math.round(top)}px`,
+        left: `${Math.round(left)}px`,
+        maxHeight: `${Math.max(FLOATING_POPOVER_MIN_HEIGHT, maxHeight)}px`,
+        overflowY: desiredHeight > maxHeight ? 'auto' : undefined,
+        visibility: 'visible',
+      })
+    }
+    const scheduleUpdate = () => {
+      window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(updatePlacement)
+    }
+
+    updatePlacement()
+    window.addEventListener('resize', scheduleUpdate)
+    window.addEventListener('scroll', scheduleUpdate, true)
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('resize', scheduleUpdate)
+      window.removeEventListener('scroll', scheduleUpdate, true)
+    }
+  }, [isOpen, offset.left, offset.top, ...deps])
+
+  return style
+}
+
 type ScheduledTask = {
   id: string
   title: string
@@ -468,8 +648,58 @@ type ConversationRecord = {
   title: string
   active: boolean
   createdAt: number
+  updatedAt?: number
+  pinned?: boolean
   messages: ChatMessage[]
+  path?: string
 }
+
+type ProjectConversationRecord = {
+  id: string
+  title: string
+  createdAt: number
+  updatedAt?: number
+  pinned?: boolean
+  messages: ChatMessage[]
+  path?: string
+}
+
+type ProjectRecord = {
+  id: string
+  title: string
+  path: string
+  createdAt: number
+  pinned?: boolean
+  conversations: ProjectConversationRecord[]
+}
+
+type HermesWorkspace = {
+  rootPath: string
+  projects: ProjectRecord[]
+  conversations: ConversationRecord[]
+}
+
+type AppActionHandler = () => void | Promise<void>
+
+type ActiveChatTarget =
+  | { kind: 'regular'; conversationId: string | null }
+  | { kind: 'project'; projectId: string; conversationId: string | null }
+
+type PendingConversationDelete =
+  | { kind: 'regular'; conversation: ConversationRecord }
+  | { kind: 'project'; projectId: string; conversation: ProjectConversationRecord }
+
+type ProjectNameDialogMode =
+  | { kind: 'create' }
+  | { kind: 'rename'; project: ProjectRecord }
+
+type PendingProjectRemove = {
+  project: ProjectRecord
+}
+
+type PendingConversationRename =
+  | { kind: 'regular'; conversation: ConversationRecord }
+  | { kind: 'project'; projectId: string; conversation: ProjectConversationRecord }
 
 type QwenStreamResult = {
   role: 'assistant'
@@ -480,6 +710,14 @@ type QwenStreamResult = {
 type QwenStreamChunk = {
   requestId: string
   content: string
+}
+
+function renderFloatingPortal(content: ReactNode) {
+  if (typeof document === 'undefined') {
+    return content
+  }
+
+  return createPortal(content, document.body)
 }
 
 type PlatformStatus = 'off' | 'pending' | 'complete'
@@ -1140,9 +1378,52 @@ const englishTextEntries = [
   ['充值额度', 'Credits'],
   ['设置', 'Settings'],
   ['项目', 'Projects'],
+  ['置顶', 'Pinned'],
   ['暂无项目', 'No projects'],
   ['对话', 'Chats'],
   ['暂无对话', 'No chats'],
+  ['项目更多操作', 'More project actions'],
+  ['新建项目', 'New Project'],
+  ['新建空白项目', 'Blank project'],
+  ['使用现有文件夹', 'Existing folder'],
+  ['项目排序条件', 'Project sort'],
+  ['对话更多操作', 'More chat actions'],
+  ['新建对话', 'New Chat'],
+  ['对话排序条件', 'Chat sort'],
+  ['置顶更多操作', 'More pinned actions'],
+  ['归档所有聊天', 'Archive all'],
+  ['排序条件', 'Sort'],
+  ['排序时间', 'Created'],
+  ['更新时间', 'Updated'],
+  ['取消置顶', 'Unpin'],
+  ['置顶项目', 'Pin project'],
+  ['置顶对话', 'Pin chat'],
+  ['在Finder中打开', 'Open in Finder'],
+  ['重命名项目', 'Rename project'],
+  ['归档对话', 'Archive chats'],
+  ['移除', 'Remove'],
+  ['复制ID', 'Copy ID'],
+  ['导出', 'Export'],
+  ['重命名', 'Rename'],
+  ['归档', 'Archive'],
+  ['删除', 'Delete'],
+  ['为项目命名', 'Name Project'],
+  ['项目名称', 'Project name'],
+  ['重命名对话', 'Rename Chat'],
+  ['对话名称', 'Chat name'],
+  ['复制对话ID', 'Copy chat ID'],
+  ['复制为 Markdown', 'Copy Markdown'],
+  ['确认删除对话？', 'Delete chat?'],
+  ['对话删除后将不可恢复，请谨慎操作！', 'This chat cannot be recovered after deletion. Please proceed carefully.'],
+  ['这将从Hz-Hermes中移除该项目，磁盘上的文件不会被删除。', 'This will remove the project from Hz-Hermes. Files on disk will not be deleted.'],
+  ['项目已重命名', 'Project renamed'],
+  ['项目已创建', 'Project created'],
+  ['项目已添加', 'Project added'],
+  ['项目已移除', 'Project removed'],
+  ['对话已删除', 'Chat deleted'],
+  ['对话已重命名', 'Chat renamed'],
+  ['项目名称不能为空', 'Project name is required'],
+  ['对话名称不能为空', 'Chat name is required'],
   ['今天想做点什么？', 'What would you like to do today?'],
   ['输入消息', 'Type a message'],
   ['输入消息，继续提问', 'Type a message to continue'],
@@ -1482,6 +1763,47 @@ function translateToEnglish(value: string) {
     return value.replace(trimmedValue, translatedValue)
   }
 
+  const removeProjectMatch = trimmedValue.match(/^移除(.+)？$/)
+  if (removeProjectMatch) {
+    return value.replace(trimmedValue, `Remove ${removeProjectMatch[1]}?`)
+  }
+
+  const minuteMatch = trimmedValue.match(/^(\d+)分钟前$/)
+  if (minuteMatch) {
+    const count = Number(minuteMatch[1])
+    return value.replace(trimmedValue, `${count} ${count === 1 ? 'minute' : 'minutes'} ago`)
+  }
+
+  const hourMatch = trimmedValue.match(/^(\d+)小时前$/)
+  if (hourMatch) {
+    const count = Number(hourMatch[1])
+    return value.replace(trimmedValue, `${count} ${count === 1 ? 'hour' : 'hours'} ago`)
+  }
+
+  const dayMatch = trimmedValue.match(/^(\d+)天前$/)
+  if (dayMatch) {
+    const count = Number(dayMatch[1])
+    return value.replace(trimmedValue, `${count} ${count === 1 ? 'day' : 'days'} ago`)
+  }
+
+  const weekMatch = trimmedValue.match(/^(\d+)周前$/)
+  if (weekMatch) {
+    const count = Number(weekMatch[1])
+    return value.replace(trimmedValue, `${count} ${count === 1 ? 'week' : 'weeks'} ago`)
+  }
+
+  const monthMatch = trimmedValue.match(/^(\d+)个月前$/)
+  if (monthMatch) {
+    const count = Number(monthMatch[1])
+    return value.replace(trimmedValue, `${count} ${count === 1 ? 'month' : 'months'} ago`)
+  }
+
+  const yearMatch = trimmedValue.match(/^(\d+)年前$/)
+  if (yearMatch) {
+    const count = Number(yearMatch[1])
+    return value.replace(trimmedValue, `${count} ${count === 1 ? 'year' : 'years'} ago`)
+  }
+
   const secondsMatch = trimmedValue.match(/^(\d+)秒后获取$/)
   if (secondsMatch) {
     return value.replace(trimmedValue, `Get in ${secondsMatch[1]}s`)
@@ -1495,7 +1817,7 @@ function useGlobalEnglishTranslation(isEnglish: boolean) {
   const attributeOriginalsRef = useRef(new WeakMap<Element, Partial<Record<'placeholder' | 'aria-label' | 'title', string>>>() )
 
   useEffect(() => {
-    const root = document.getElementById('root')
+    const root = document.body
 
     if (!root) {
       return undefined
@@ -1708,17 +2030,9 @@ async function configureAppWindowForAuthState(isAuthenticated: boolean) {
   }
 }
 
-function formatConversationTime(createdAt: number, now: number) {
-  const elapsedSeconds = Math.max(0, Math.floor((now - createdAt) / 1000))
-  const elapsedMinutes = Math.floor(elapsedSeconds / 60)
-
-  if (elapsedMinutes < 1) {
-    return new Intl.DateTimeFormat('zh-CN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).format(createdAt)
-  }
+function formatConversationTime(updatedAt: number, now: number) {
+  const elapsedSeconds = Math.max(0, Math.floor((now - updatedAt) / 1000))
+  const elapsedMinutes = Math.max(1, Math.floor(elapsedSeconds / 60))
 
   if (elapsedMinutes < 60) {
     return `${elapsedMinutes}分钟前`
@@ -1738,11 +2052,17 @@ function formatConversationTime(createdAt: number, now: number) {
 
   const elapsedWeeks = Math.floor(elapsedDays / 7)
 
-  if (elapsedWeeks < 52) {
+  if (elapsedWeeks < 4) {
     return `${elapsedWeeks}周前`
   }
 
-  return `${Math.floor(elapsedWeeks / 52)}年前`
+  const elapsedMonths = Math.floor(elapsedDays / 30)
+
+  if (elapsedMonths < 12) {
+    return `${Math.max(1, elapsedMonths)}个月前`
+  }
+
+  return `${Math.floor(elapsedMonths / 12)}年前`
 }
 
 function resolveCurrentColorIcon(icon: string) {
@@ -2217,11 +2537,1250 @@ function NavItem({
   )
 }
 
-function EmptySection({ title, emptyText }: { title: string; emptyText: string }) {
+function ProjectSection({
+  projects,
+  now,
+  isOpen,
+  onToggle,
+  onCreateBlankProject,
+  onChooseExistingProjectFolder,
+  onCreateProjectConversation,
+  onSelectProjectConversation,
+  onOpenProjectFolder,
+  onRequestRenameProject,
+  onRequestRemoveProject,
+  onToggleProjectPinned,
+  onToggleProjectConversationPinned,
+  onRequestRenameProjectConversation,
+  onRequestDeleteProjectConversation,
+}: {
+  projects: ProjectRecord[]
+  now: number
+  isOpen: boolean
+  onToggle: () => void
+  onCreateBlankProject: () => void
+  onChooseExistingProjectFolder: () => void
+  onCreateProjectConversation: (projectId: string) => void
+  onSelectProjectConversation: (projectId: string, conversationId: string) => void
+  onOpenProjectFolder: (projectId: string) => void
+  onRequestRenameProject: (project: ProjectRecord) => void
+  onRequestRemoveProject: (project: ProjectRecord) => void
+  onToggleProjectPinned: (projectId: string, pinned: boolean) => void
+  onToggleProjectConversationPinned: (projectId: string, conversation: ProjectConversationRecord, pinned: boolean) => void
+  onRequestRenameProjectConversation: (projectId: string, conversation: ProjectConversationRecord) => void
+  onRequestDeleteProjectConversation: (projectId: string, conversation: ProjectConversationRecord) => void
+}) {
+  const [openProjectGroups, setOpenProjectGroups] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(projects.map((item) => [item.id, true])),
+  )
+  const [projectTitleMenu, setProjectTitleMenu] = useState<'more' | 'create' | null>(null)
+  const [isProjectSortMenuOpen, setIsProjectSortMenuOpen] = useState(false)
+  const [openProjectGroupMenuId, setOpenProjectGroupMenuId] = useState<string | null>(null)
+  const [openProjectChatMenuId, setOpenProjectChatMenuId] = useState<string | null>(null)
+  const projectTitleRef = useRef<HTMLHeadingElement | null>(null)
+  const projectMoreButtonRef = useRef<HTMLButtonElement | null>(null)
+  const projectCreateButtonRef = useRef<HTMLButtonElement | null>(null)
+  const projectMorePopoverRef = useRef<HTMLDivElement | null>(null)
+  const projectCreatePopoverRef = useRef<HTMLDivElement | null>(null)
+  const projectSortMenuRef = useRef<HTMLButtonElement | null>(null)
+  const projectSortPopoverRef = useRef<HTMLDivElement | null>(null)
+  const projectGroupRowRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const projectGroupPopoverRef = useRef<HTMLDivElement | null>(null)
+  const projectChatRowRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const projectChatPopoverRef = useRef<HTMLDivElement | null>(null)
+  const projectMorePopoverStyle = useProjectTitlePopoverPlacement(
+    projectTitleMenu === 'more',
+    projectTitleRef,
+    projectMorePopoverRef,
+    'more',
+    [projectTitleMenu],
+  )
+  const projectCreatePopoverStyle = useProjectTitlePopoverPlacement(
+    projectTitleMenu === 'create',
+    projectTitleRef,
+    projectCreatePopoverRef,
+    'create',
+    [projectTitleMenu],
+  )
+  const projectSortPopoverStyle = useProjectTitlePopoverPlacement(
+    isProjectSortMenuOpen,
+    projectTitleRef,
+    projectSortPopoverRef,
+    'sort',
+    [isProjectSortMenuOpen],
+  )
+  const projectGroupPopoverStyle = useOffsetPopoverPlacement(
+    Boolean(openProjectGroupMenuId),
+    { current: openProjectGroupMenuId ? projectGroupRowRefs.current[openProjectGroupMenuId] ?? null : null },
+    projectGroupPopoverRef,
+    { left: 28, top: 34 },
+    [openProjectGroupMenuId],
+  )
+  const projectChatPopoverStyle = useOffsetPopoverPlacement(
+    Boolean(openProjectChatMenuId),
+    { current: openProjectChatMenuId ? projectChatRowRefs.current[openProjectChatMenuId] ?? null : null },
+    projectChatPopoverRef,
+    { left: 60, top: 34 },
+    [openProjectChatMenuId],
+  )
+  const toggleProjectGroup = (groupId: string) => {
+    setOpenProjectGroups((currentGroups) => ({
+      ...currentGroups,
+      [groupId]: !(currentGroups[groupId] ?? true),
+    }))
+  }
+
+  useEffect(() => {
+    setOpenProjectGroups((currentGroups) => {
+      let didChange = false
+      const nextGroups = projects.reduce<Record<string, boolean>>((groups, project) => {
+        groups[project.id] = currentGroups[project.id] ?? true
+        didChange = didChange || !(project.id in currentGroups)
+        return groups
+      }, {})
+
+      if (Object.keys(currentGroups).length !== Object.keys(nextGroups).length) {
+        didChange = true
+      }
+
+      return didChange ? nextGroups : currentGroups
+    })
+  }, [projects])
+  const closeProjectTitleMenus = () => {
+    setProjectTitleMenu(null)
+    setIsProjectSortMenuOpen(false)
+  }
+  const closeProjectGroupMenu = () => {
+    setOpenProjectGroupMenuId(null)
+  }
+  const closeProjectChatMenu = () => {
+    setOpenProjectChatMenuId(null)
+  }
+  const closeAllProjectMenus = () => {
+    setProjectTitleMenu(null)
+    setIsProjectSortMenuOpen(false)
+    setOpenProjectGroupMenuId(null)
+    setOpenProjectChatMenuId(null)
+  }
+  const isProjectPopoverControl = (target: Node) =>
+    projectMoreButtonRef.current?.contains(target) ||
+    projectCreateButtonRef.current?.contains(target) ||
+    projectMorePopoverRef.current?.contains(target) ||
+    projectCreatePopoverRef.current?.contains(target) ||
+    projectSortPopoverRef.current?.contains(target) ||
+    projectGroupPopoverRef.current?.contains(target) ||
+    projectChatPopoverRef.current?.contains(target) ||
+    (target instanceof Element &&
+      Boolean(
+        target.closest(
+          '.project-section .nav-section-action, .project-section .chat-list-row-action',
+        ),
+      ))
+  const handleProjectSortPointerLeave = (event: ReactMouseEvent<HTMLElement>) => {
+    const relatedTarget = event.relatedTarget
+
+    if (
+      relatedTarget instanceof Node &&
+      (projectSortMenuRef.current?.contains(relatedTarget) ||
+        projectSortPopoverRef.current?.contains(relatedTarget))
+    ) {
+      return
+    }
+
+    setIsProjectSortMenuOpen(false)
+  }
+
+  useEffect(() => {
+    if (!projectTitleMenu) {
+      setIsProjectSortMenuOpen(false)
+      return undefined
+    }
+
+    const closeMenu = (event: PointerEvent) => {
+      const target = event.target
+
+      if (
+        !(target instanceof Node) ||
+        isProjectPopoverControl(target)
+      ) {
+        return
+      }
+
+      closeProjectTitleMenus()
+    }
+
+    document.addEventListener('pointerdown', closeMenu, true)
+    return () => {
+      document.removeEventListener('pointerdown', closeMenu, true)
+    }
+  }, [projectTitleMenu])
+
+  useEffect(() => {
+    if (!openProjectGroupMenuId) {
+      return undefined
+    }
+
+    const closeMenu = (event: PointerEvent) => {
+      const target = event.target
+
+      if (
+        !(target instanceof Node) ||
+        projectGroupRowRefs.current[openProjectGroupMenuId]?.contains(target) ||
+        isProjectPopoverControl(target)
+      ) {
+        return
+      }
+
+      closeProjectGroupMenu()
+    }
+
+    document.addEventListener('pointerdown', closeMenu, true)
+    return () => {
+      document.removeEventListener('pointerdown', closeMenu, true)
+    }
+  }, [openProjectGroupMenuId])
+
+  useEffect(() => {
+    if (!openProjectChatMenuId) {
+      return undefined
+    }
+
+    const closeMenu = (event: PointerEvent) => {
+      const target = event.target
+
+      if (
+        !(target instanceof Node) ||
+        projectChatRowRefs.current[openProjectChatMenuId]?.contains(target) ||
+        isProjectPopoverControl(target)
+      ) {
+        return
+      }
+
+      closeProjectChatMenu()
+    }
+
+    document.addEventListener('pointerdown', closeMenu, true)
+    return () => {
+      document.removeEventListener('pointerdown', closeMenu, true)
+    }
+  }, [openProjectChatMenuId])
+
   return (
-    <section className="nav-section" aria-label={title}>
-      <h2>{title}</h2>
-      <div className="empty-nav-row">{emptyText}</div>
+    <section className={`nav-section project-section ${isOpen ? 'expanded' : 'collapsed'}`} aria-label="项目">
+      <div className={`nav-section-title-wrap ${projectTitleMenu ? 'has-open-menu' : ''}`}>
+        <h2
+          className="project-section-title"
+          aria-expanded={isOpen}
+          ref={projectTitleRef}
+          onClick={() => {
+            closeAllProjectMenus()
+            onToggle()
+          }}
+        >
+          <span className="nav-section-title-copy">
+            <span>项目</span>
+            <span className="nav-section-toggle-icon">
+              <FigmaIcon icon={isOpen ? chevronDownIcon : chevronRightIcon} />
+            </span>
+          </span>
+          <span className="nav-section-actions">
+            <button
+              className={`nav-section-action ${projectTitleMenu === 'more' ? 'active' : ''}`}
+              type="button"
+              aria-label="项目更多操作"
+              aria-expanded={projectTitleMenu === 'more'}
+              ref={projectMoreButtonRef}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation()
+                setProjectTitleMenu(projectTitleMenu === 'more' ? null : 'more')
+                setIsProjectSortMenuOpen(false)
+                setOpenProjectGroupMenuId(null)
+                setOpenProjectChatMenuId(null)
+              }}
+            >
+              <FigmaIcon icon={ellipsisIcon} />
+            </button>
+            <button
+              className={`nav-section-action ${projectTitleMenu === 'create' ? 'active' : ''}`}
+              type="button"
+              aria-label="新建项目"
+              aria-expanded={projectTitleMenu === 'create'}
+              ref={projectCreateButtonRef}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation()
+                setProjectTitleMenu(projectTitleMenu === 'create' ? null : 'create')
+                setIsProjectSortMenuOpen(false)
+                setOpenProjectGroupMenuId(null)
+                setOpenProjectChatMenuId(null)
+              }}
+            >
+              <FigmaIcon icon={projectTitleFolderPlusIcon} />
+            </button>
+          </span>
+        </h2>
+        {projectTitleMenu === 'more' ? renderFloatingPortal(
+          <div
+            className="composer-popover project-title-popover"
+            ref={projectMorePopoverRef}
+            role="menu"
+            aria-label="项目更多操作"
+            style={projectMorePopoverStyle}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="composer-popover-option"
+              type="button"
+              role="menuitem"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation()
+                closeProjectTitleMenus()
+              }}
+            >
+              <span className="composer-popover-option-surface">
+                <FigmaIcon icon={settingsArchiveIcon} />
+                <span className="composer-popover-option-label">归档所有聊天</span>
+              </span>
+            </button>
+            <div className="composer-popover-separator" role="separator" />
+            <button
+              className={`composer-popover-option project-sort-trigger ${isProjectSortMenuOpen ? 'selected' : ''}`}
+              type="button"
+              role="menuitem"
+              ref={projectSortMenuRef}
+              aria-expanded={isProjectSortMenuOpen}
+              onMouseEnter={() => setIsProjectSortMenuOpen(true)}
+              onMouseLeave={handleProjectSortPointerLeave}
+              onClick={(event) => {
+                event.stopPropagation()
+                setIsProjectSortMenuOpen(true)
+              }}
+            >
+              <span className="composer-popover-option-surface">
+                <FigmaIcon icon={projectTitleClockIcon} />
+                <span className="composer-popover-option-label">排序条件</span>
+                <span className="composer-popover-option-chevron">
+                  <FigmaIcon icon={chevronRightIcon} />
+                </span>
+              </span>
+            </button>
+            {isProjectSortMenuOpen ? (
+              <div
+                className="composer-popover project-title-popover project-sort-popover"
+                ref={projectSortPopoverRef}
+                role="menu"
+                aria-label="项目排序条件"
+                style={projectSortPopoverStyle}
+                onMouseLeave={handleProjectSortPointerLeave}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <button
+                  className="composer-popover-option"
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked="false"
+                  onClick={closeProjectTitleMenus}
+                >
+                  <span className="composer-popover-option-surface">
+                    <FigmaIcon icon={messageCirclePlusIcon} />
+                    <span className="composer-popover-option-label">排序时间</span>
+                  </span>
+                </button>
+                <button
+                  className="composer-popover-option project-sort-selected-option selected"
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked="true"
+                  onClick={closeProjectTitleMenus}
+                >
+                  <span className="composer-popover-option-surface">
+                    <FigmaIcon icon={projectTitleMonitorSmartphoneIcon} />
+                    <span className="composer-popover-option-label">更新时间</span>
+                    <span className="composer-popover-check">
+                      <FigmaIcon icon={checkIcon} />
+                    </span>
+                  </span>
+                </button>
+              </div>
+            ) : null}
+          </div>,
+        ) : null}
+        {projectTitleMenu === 'create' ? renderFloatingPortal(
+          <div
+            className="composer-popover project-title-popover"
+            ref={projectCreatePopoverRef}
+            role="menu"
+            aria-label="新建项目"
+            style={projectCreatePopoverStyle}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="composer-popover-option"
+              type="button"
+              role="menuitem"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation()
+                onCreateBlankProject()
+                closeProjectTitleMenus()
+              }}
+            >
+              <span className="composer-popover-option-surface">
+                <FigmaIcon icon={projectCreateFolderPlusIcon} />
+                <span className="composer-popover-option-label">新建空白项目</span>
+              </span>
+            </button>
+            <button
+              className="composer-popover-option"
+              type="button"
+              role="menuitem"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation()
+                closeProjectTitleMenus()
+                void onChooseExistingProjectFolder()
+              }}
+            >
+              <span className="composer-popover-option-surface">
+                <FigmaIcon icon={projectCreateFolderPlusIcon} />
+                <span className="composer-popover-option-label">使用现有文件夹</span>
+              </span>
+            </button>
+          </div>,
+        ) : null}
+      </div>
+      <div
+        className={`nav-section-list project-section-list ${isOpen ? 'expanded' : 'collapsed'}`}
+        aria-hidden={!isOpen}
+      >
+        <div className="nav-section-list-inner">
+          {projects.length === 0 ? <div className="nav-empty-row">暂无项目</div> : null}
+          {projects.map((group) => (
+            <div
+              className={`project-subgroup ${openProjectGroups[group.id] ?? true ? 'expanded' : 'collapsed'}`}
+              key={group.id}
+            >
+              <div className="nav-list-row-shell">
+                <div
+                  className={`nav-list-row project-list-row project-subgroup-row has-icon ${
+                    openProjectGroupMenuId === group.id ? 'has-open-menu' : ''
+                  }`}
+                  role="button"
+                  tabIndex={0}
+                  ref={(node) => {
+                    projectGroupRowRefs.current[group.id] = node
+                  }}
+                  aria-expanded={openProjectGroups[group.id] ?? true}
+                  onClick={() => {
+                    closeAllProjectMenus()
+                    toggleProjectGroup(group.id)
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      closeAllProjectMenus()
+                      toggleProjectGroup(group.id)
+                    }
+                  }}
+                >
+                  <FigmaIcon icon={(openProjectGroups[group.id] ?? true) ? fileLibraryFolderOpenIcon : projectFolderClosedIcon} />
+                  <span className="project-subgroup-title">{group.title}</span>
+                  <span
+                    className="project-subgroup-actions nav-section-actions"
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
+                  >
+                    <button
+                      className={`nav-section-action ${openProjectGroupMenuId === group.id ? 'active' : ''}`}
+                      type="button"
+                      aria-label={`${group.title}更多操作`}
+                      aria-expanded={openProjectGroupMenuId === group.id}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        closeProjectTitleMenus()
+                        closeProjectChatMenu()
+                        setOpenProjectGroupMenuId((currentId) => (currentId === group.id ? null : group.id))
+                      }}
+                    >
+                      <FigmaIcon icon={ellipsisIcon} />
+                    </button>
+                    <button
+                      className="nav-section-action"
+                      type="button"
+                      aria-label={`${group.title}新建对话`}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        closeAllProjectMenus()
+                        onCreateProjectConversation(group.id)
+                      }}
+                    >
+                      <FigmaIcon icon={messageCirclePlusIcon} />
+                    </button>
+                  </span>
+                </div>
+              </div>
+              {openProjectGroupMenuId === group.id ? renderFloatingPortal(
+                <div
+                  className="composer-popover project-title-popover project-subgroup-popover"
+                  ref={projectGroupPopoverRef}
+                  role="menu"
+                  aria-label={`${group.title}更多操作`}
+                  style={projectGroupPopoverStyle}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <button
+                    className="composer-popover-option"
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      closeProjectGroupMenu()
+                      onToggleProjectPinned(group.id, !group.pinned)
+                    }}
+                  >
+                    <span className="composer-popover-option-surface">
+                      <FigmaIcon icon={projectMenuPinIcon} />
+                      <span className="composer-popover-option-label">
+                        {group.pinned ? '取消置顶' : '置顶项目'}
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    className="composer-popover-option"
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      closeProjectGroupMenu()
+                      onOpenProjectFolder(group.id)
+                    }}
+                  >
+                    <span className="composer-popover-option-surface">
+                      <FigmaIcon icon={projectMenuFolderOpenIcon} />
+                      <span className="composer-popover-option-label">在Finder中打开</span>
+                    </span>
+                  </button>
+                  <button
+                    className="composer-popover-option"
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      closeProjectGroupMenu()
+                      onRequestRenameProject(group)
+                    }}
+                  >
+                    <span className="composer-popover-option-surface">
+                      <FigmaIcon icon={projectMenuSquarePenIcon} />
+                      <span className="composer-popover-option-label">重命名项目</span>
+                    </span>
+                  </button>
+                  <button
+                    className="composer-popover-option"
+                    type="button"
+                    role="menuitem"
+                    onClick={closeProjectGroupMenu}
+                  >
+                    <span className="composer-popover-option-surface">
+                      <FigmaIcon icon={projectMenuArchiveIcon} />
+                      <span className="composer-popover-option-label">归档对话</span>
+                    </span>
+                  </button>
+                  <div className="composer-popover-separator" role="separator" />
+                  <button
+                    className="composer-popover-option"
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      closeProjectGroupMenu()
+                      onRequestRemoveProject(group)
+                    }}
+                  >
+                    <span className="composer-popover-option-surface">
+                      <FigmaIcon icon={projectMenuXIcon} />
+                      <span className="composer-popover-option-label">移除</span>
+                    </span>
+                  </button>
+                </div>,
+              ) : null}
+              <div
+                className={`project-subgroup-list ${openProjectGroups[group.id] ?? true ? 'expanded' : 'collapsed'}`}
+                aria-hidden={!(openProjectGroups[group.id] ?? true)}
+              >
+                <div className="project-subgroup-list-inner">
+                  {group.conversations.length === 0
+                    ? (
+                        <div className="nav-list-row-shell">
+                          <div className="nav-list-row project-list-row chat-list-row project-subgroup-empty-row">
+                            <span>暂无项目</span>
+                          </div>
+                        </div>
+                      )
+                    : group.conversations.map((conversation) => (
+                        <div className="nav-list-row-shell" key={conversation.id}>
+                          <div
+                            className={`nav-list-row project-list-row chat-list-row ${
+                              openProjectChatMenuId === conversation.id ? 'has-open-menu' : ''
+                            }`}
+                            role="button"
+                            tabIndex={0}
+                            ref={(node) => {
+                              projectChatRowRefs.current[conversation.id] = node
+                            }}
+                            onClick={() => {
+                              closeAllProjectMenus()
+                              onSelectProjectConversation(group.id, conversation.id)
+                            }}
+                          >
+                            <span>{conversation.title}</span>
+                            <time>{formatConversationTime(conversation.updatedAt ?? conversation.createdAt, now)}</time>
+                            <span
+                              className="chat-list-row-actions"
+                              onClick={(event) => event.stopPropagation()}
+                              onKeyDown={(event) => event.stopPropagation()}
+                            >
+                              <button
+                                className={`chat-list-row-action ${
+                                  openProjectChatMenuId === conversation.id ? 'active' : ''
+                                }`}
+                                type="button"
+                                aria-label={`${conversation.title}更多操作`}
+                                aria-expanded={openProjectChatMenuId === conversation.id}
+                                onPointerDown={(event) => event.stopPropagation()}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  closeProjectTitleMenus()
+                                  closeProjectGroupMenu()
+                                  setOpenProjectChatMenuId((currentId) =>
+                                    currentId === conversation.id ? null : conversation.id,
+                                  )
+                                }}
+                              >
+                                <FigmaIcon icon={ellipsisIcon} />
+                              </button>
+                            </span>
+                          </div>
+                          {openProjectChatMenuId === conversation.id ? renderFloatingPortal(
+                            <div
+                              className="composer-popover project-title-popover project-chat-popover"
+                              ref={projectChatPopoverRef}
+                              role="menu"
+                              aria-label={`${conversation.title}更多操作`}
+                              style={projectChatPopoverStyle}
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <button
+                                className="composer-popover-option"
+                                type="button"
+                                role="menuitem"
+                                onClick={() => {
+                                  closeProjectChatMenu()
+                                  onToggleProjectConversationPinned(group.id, conversation, !conversation.pinned)
+                                }}
+                              >
+                                <span className="composer-popover-option-surface">
+                                  <FigmaIcon icon={projectChatMenuPinIcon} />
+                                  <span className="composer-popover-option-label">
+                                    {conversation.pinned ? '取消置顶' : '置顶对话'}
+                                  </span>
+                                </span>
+                              </button>
+                              <button
+                                className="composer-popover-option"
+                                type="button"
+                                role="menuitem"
+                                onClick={closeProjectChatMenu}
+                              >
+                                <span className="composer-popover-option-surface">
+                                  <FigmaIcon icon={projectChatMenuCopyIcon} />
+                                  <span className="composer-popover-option-label">复制ID</span>
+                                </span>
+                              </button>
+                              <button
+                                className="composer-popover-option"
+                                type="button"
+                                role="menuitem"
+                                onClick={closeProjectChatMenu}
+                              >
+                                <span className="composer-popover-option-surface">
+                                  <FigmaIcon icon={projectChatMenuUploadIcon} />
+                                  <span className="composer-popover-option-label">导出</span>
+                                </span>
+                              </button>
+                              <button
+                                className="composer-popover-option"
+                                type="button"
+                                role="menuitem"
+                                onClick={() => {
+                                  closeProjectChatMenu()
+                                  onRequestRenameProjectConversation(group.id, conversation)
+                                }}
+                              >
+                                <span className="composer-popover-option-surface">
+                                  <FigmaIcon icon={projectChatMenuSquarePenIcon} />
+                                  <span className="composer-popover-option-label">重命名</span>
+                                </span>
+                              </button>
+                              <button
+                                className="composer-popover-option"
+                                type="button"
+                                role="menuitem"
+                                onClick={closeProjectChatMenu}
+                              >
+                                <span className="composer-popover-option-surface">
+                                  <FigmaIcon icon={projectChatMenuArchiveIcon} />
+                                  <span className="composer-popover-option-label">归档</span>
+                                </span>
+                              </button>
+                              <div className="composer-popover-separator" role="separator" />
+                              <button
+                                className="composer-popover-option danger"
+                                type="button"
+                                role="menuitem"
+                                onClick={() => {
+                                  closeProjectChatMenu()
+                                  onRequestDeleteProjectConversation(group.id, conversation)
+                                }}
+                              >
+                                <span className="composer-popover-option-surface">
+                                  <FigmaIcon icon={projectChatMenuTrashIcon} />
+                                  <span className="composer-popover-option-label">删除</span>
+                                </span>
+                              </button>
+                            </div>,
+                          ) : null}
+                        </div>
+                      ))
+                  }
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+type PinnedConversationItem =
+  | { kind: 'regular'; conversation: ConversationRecord }
+  | { kind: 'project'; projectId: string; conversation: ProjectConversationRecord }
+
+function PinnedSection({
+  projects,
+  conversations,
+  now,
+  isOpen,
+  onToggle,
+  onCreateProjectConversation,
+  onSelectProjectConversation,
+  onSelectConversation,
+  onOpenProjectFolder,
+  onRequestRenameProject,
+  onRequestRemoveProject,
+  onToggleProjectPinned,
+  onToggleProjectConversationPinned,
+  onToggleConversationPinned,
+  onRequestRenameProjectConversation,
+  onRequestRenameConversation,
+  onRequestDeleteProjectConversation,
+  onRequestDeleteConversation,
+}: {
+  projects: ProjectRecord[]
+  conversations: PinnedConversationItem[]
+  now: number
+  isOpen: boolean
+  onToggle: () => void
+  onCreateProjectConversation: (projectId: string) => void
+  onSelectProjectConversation: (projectId: string, conversationId: string) => void
+  onSelectConversation: (conversationId: string) => void
+  onOpenProjectFolder: (projectId: string) => void
+  onRequestRenameProject: (project: ProjectRecord) => void
+  onRequestRemoveProject: (project: ProjectRecord) => void
+  onToggleProjectPinned: (projectId: string, pinned: boolean) => void
+  onToggleProjectConversationPinned: (projectId: string, conversation: ProjectConversationRecord, pinned: boolean) => void
+  onToggleConversationPinned: (conversation: ConversationRecord, pinned: boolean) => void
+  onRequestRenameProjectConversation: (projectId: string, conversation: ProjectConversationRecord) => void
+  onRequestRenameConversation: (conversation: ConversationRecord) => void
+  onRequestDeleteProjectConversation: (projectId: string, conversation: ProjectConversationRecord) => void
+  onRequestDeleteConversation: (conversation: ConversationRecord) => void
+}) {
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(projects.map((project) => [project.id, true])),
+  )
+  const [openMenu, setOpenMenu] = useState<
+    | { kind: 'project'; id: string }
+    | { kind: 'projectConversation'; id: string; projectId: string }
+    | { kind: 'regularConversation'; id: string }
+    | null
+  >(null)
+  const titleRef = useRef<HTMLHeadingElement | null>(null)
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const menuRef = useRef<HTMLDivElement | null>(null)
+  const openMenuKey = openMenu ? `${openMenu.kind}:${openMenu.id}` : ''
+  const menuStyle = useOffsetPopoverPlacement(
+    Boolean(openMenu),
+    { current: openMenu ? rowRefs.current[openMenuKey] ?? null : null },
+    menuRef,
+    { left: openMenu?.kind === 'project' ? 28 : 60, top: 34 },
+    [openMenu?.kind, openMenu?.id],
+  )
+
+  useEffect(() => {
+    setOpenGroups((currentGroups) => {
+      let didChange = false
+      const nextGroups = projects.reduce<Record<string, boolean>>((groups, project) => {
+        groups[project.id] = currentGroups[project.id] ?? true
+        didChange = didChange || !(project.id in currentGroups)
+        return groups
+      }, {})
+
+      if (Object.keys(currentGroups).length !== Object.keys(nextGroups).length) {
+        didChange = true
+      }
+
+      return didChange ? nextGroups : currentGroups
+    })
+  }, [projects])
+
+  useEffect(() => {
+    if (!openMenu) {
+      return undefined
+    }
+
+    const closeMenu = (event: PointerEvent) => {
+      const target = event.target
+
+      if (
+        !(target instanceof Node) ||
+        rowRefs.current[openMenuKey]?.contains(target) ||
+        menuRef.current?.contains(target) ||
+        (target instanceof Element &&
+          Boolean(target.closest('.pinned-section .nav-section-action, .pinned-section .chat-list-row-action')))
+      ) {
+        return
+      }
+
+      setOpenMenu(null)
+    }
+
+    document.addEventListener('pointerdown', closeMenu, true)
+    return () => {
+      document.removeEventListener('pointerdown', closeMenu, true)
+    }
+  }, [openMenu, openMenuKey])
+
+  const closeAllPinnedMenus = () => setOpenMenu(null)
+  const toggleGroup = (projectId: string) => {
+    setOpenGroups((currentGroups) => ({
+      ...currentGroups,
+      [projectId]: !(currentGroups[projectId] ?? true),
+    }))
+  }
+  const regularConversation = openMenu?.kind === 'regularConversation'
+    ? conversations.find((item) => item.kind === 'regular' && item.conversation.id === openMenu.id)
+    : undefined
+  const projectConversation = openMenu?.kind === 'projectConversation'
+    ? conversations.find(
+        (item) =>
+          item.kind === 'project' &&
+          item.projectId === openMenu.projectId &&
+          item.conversation.id === openMenu.id,
+      )
+    : undefined
+  const nestedProjectConversation = openMenu?.kind === 'projectConversation'
+    ? projects
+        .find((project) => project.id === openMenu.projectId)
+        ?.conversations.find((conversation) => conversation.id === openMenu.id)
+    : undefined
+  const activeProjectConversation = projectConversation?.conversation ?? nestedProjectConversation
+  const menuProject = openMenu?.kind === 'project'
+    ? projects.find((project) => project.id === openMenu.id)
+    : undefined
+
+  return (
+    <section className={`nav-section pinned-section ${isOpen ? 'expanded' : 'collapsed'}`} aria-label="置顶">
+      <div className={`nav-section-title-wrap ${openMenu ? 'has-open-menu' : ''}`}>
+        <h2
+          className="pinned-section-title"
+          aria-expanded={isOpen}
+          ref={titleRef}
+          onClick={() => {
+            closeAllPinnedMenus()
+            onToggle()
+          }}
+        >
+          <span className="nav-section-title-copy">
+            <span>置顶</span>
+            <span className="nav-section-toggle-icon">
+              <FigmaIcon icon={isOpen ? chevronDownIcon : chevronRightIcon} />
+            </span>
+          </span>
+        </h2>
+      </div>
+      <div className={`nav-section-list pinned-section-list ${isOpen ? 'expanded' : 'collapsed'}`} aria-hidden={!isOpen}>
+        <div className="nav-section-list-inner">
+          {projects.map((project) => {
+            const isProjectOpen = openGroups[project.id] ?? true
+            const visibleConversations = project.conversations.filter((conversation) => !conversation.pinned)
+
+            return (
+              <div
+                className={`project-subgroup ${isProjectOpen ? 'expanded' : 'collapsed'}`}
+                key={project.id}
+              >
+                <div className="nav-list-row-shell">
+                  <div
+                    className={`nav-list-row project-list-row project-subgroup-row has-icon ${
+                      openMenu?.kind === 'project' && openMenu.id === project.id ? 'has-open-menu' : ''
+                    }`}
+                    role="button"
+                    tabIndex={0}
+                    ref={(node) => {
+                      rowRefs.current[`project:${project.id}`] = node
+                    }}
+                    aria-expanded={isProjectOpen}
+                    onClick={() => {
+                      closeAllPinnedMenus()
+                      toggleGroup(project.id)
+                    }}
+                  >
+                    <FigmaIcon icon={isProjectOpen ? fileLibraryFolderOpenIcon : projectFolderClosedIcon} />
+                    <span className="project-subgroup-title">{project.title}</span>
+                    <span className="project-subgroup-actions nav-section-actions" onClick={(event) => event.stopPropagation()}>
+                      <button
+                        className={`nav-section-action ${openMenu?.kind === 'project' && openMenu.id === project.id ? 'active' : ''}`}
+                        type="button"
+                        aria-label={`${project.title}更多操作`}
+                        aria-expanded={openMenu?.kind === 'project' && openMenu.id === project.id}
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          setOpenMenu((currentMenu) =>
+                            currentMenu?.kind === 'project' && currentMenu.id === project.id
+                              ? null
+                              : { kind: 'project', id: project.id },
+                          )
+                        }}
+                      >
+                        <FigmaIcon icon={ellipsisIcon} />
+                      </button>
+                      <button
+                        className="nav-section-action"
+                        type="button"
+                        aria-label={`${project.title}新建对话`}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          closeAllPinnedMenus()
+                          onCreateProjectConversation(project.id)
+                        }}
+                      >
+                        <FigmaIcon icon={messageCirclePlusIcon} />
+                      </button>
+                    </span>
+                  </div>
+                </div>
+                <div className={`project-subgroup-list ${isProjectOpen ? 'expanded' : 'collapsed'}`} aria-hidden={!isProjectOpen}>
+                  <div className="project-subgroup-list-inner">
+                    {visibleConversations.length === 0 ? (
+                      <div className="nav-list-row-shell">
+                        <div className="nav-list-row project-list-row chat-list-row project-subgroup-empty-row">
+                          <span>暂无项目</span>
+                        </div>
+                      </div>
+                    ) : (
+                      visibleConversations.map((conversation) => (
+                        <div className="nav-list-row-shell" key={conversation.id}>
+                          <div
+                            className={`nav-list-row project-list-row chat-list-row ${
+                              openMenu?.kind === 'projectConversation' && openMenu.id === conversation.id
+                                ? 'has-open-menu'
+                                : ''
+                            }`}
+                            role="button"
+                            tabIndex={0}
+                            ref={(node) => {
+                              rowRefs.current[`projectConversation:${conversation.id}`] = node
+                            }}
+                            onClick={() => {
+                              closeAllPinnedMenus()
+                              onSelectProjectConversation(project.id, conversation.id)
+                            }}
+                          >
+                            <span>{conversation.title}</span>
+                            <time>{formatConversationTime(conversation.updatedAt ?? conversation.createdAt, now)}</time>
+                            <span className="chat-list-row-actions" onClick={(event) => event.stopPropagation()}>
+                              <button
+                                className={`chat-list-row-action ${
+                                  openMenu?.kind === 'projectConversation' && openMenu.id === conversation.id
+                                    ? 'active'
+                                    : ''
+                                }`}
+                                type="button"
+                                aria-label={`${conversation.title}更多操作`}
+                                aria-expanded={openMenu?.kind === 'projectConversation' && openMenu.id === conversation.id}
+                                onPointerDown={(event) => event.stopPropagation()}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  setOpenMenu((currentMenu) =>
+                                    currentMenu?.kind === 'projectConversation' && currentMenu.id === conversation.id
+                                      ? null
+                                      : { kind: 'projectConversation', id: conversation.id, projectId: project.id },
+                                  )
+                                }}
+                              >
+                                <FigmaIcon icon={ellipsisIcon} />
+                              </button>
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          {conversations.map((item) => {
+            const conversation = item.conversation
+            const key = `${item.kind === 'project' ? 'projectConversation' : 'regularConversation'}:${conversation.id}`
+            const isOpenMenu =
+              (item.kind === 'regular' && openMenu?.kind === 'regularConversation' && openMenu.id === conversation.id) ||
+              (item.kind === 'project' && openMenu?.kind === 'projectConversation' && openMenu.id === conversation.id)
+
+            return (
+              <div className="nav-list-row-shell" key={`${item.kind}-${conversation.id}`}>
+                <div
+                  className={`nav-list-row conversation-row chat-list-row ${isOpenMenu ? 'has-open-menu' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  title={conversation.title}
+                  ref={(node) => {
+                    rowRefs.current[key] = node
+                  }}
+                  onClick={() => {
+                    closeAllPinnedMenus()
+                    if (item.kind === 'regular') {
+                      onSelectConversation(conversation.id)
+                    } else {
+                      onSelectProjectConversation(item.projectId, conversation.id)
+                    }
+                  }}
+                >
+                  <span>{conversation.title}</span>
+                  <time>{formatConversationTime(conversation.updatedAt ?? conversation.createdAt, now)}</time>
+                  <span className="chat-list-row-actions" onClick={(event) => event.stopPropagation()}>
+                    <button
+                      className={`chat-list-row-action ${isOpenMenu ? 'active' : ''}`}
+                      type="button"
+                      aria-label={`${conversation.title}更多操作`}
+                      aria-expanded={isOpenMenu}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        setOpenMenu((currentMenu) => {
+                          if (item.kind === 'regular') {
+                            return currentMenu?.kind === 'regularConversation' && currentMenu.id === conversation.id
+                              ? null
+                              : { kind: 'regularConversation', id: conversation.id }
+                          }
+
+                          return currentMenu?.kind === 'projectConversation' && currentMenu.id === conversation.id
+                            ? null
+                            : { kind: 'projectConversation', id: conversation.id, projectId: item.projectId }
+                        })
+                      }}
+                    >
+                      <FigmaIcon icon={ellipsisIcon} />
+                    </button>
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+      {openMenu ? renderFloatingPortal(
+        <div
+          className="composer-popover project-title-popover project-chat-popover"
+          ref={menuRef}
+          role="menu"
+          aria-label="置顶更多操作"
+          style={menuStyle}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button
+            className="composer-popover-option"
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              if (menuProject) {
+                onToggleProjectPinned(menuProject.id, !menuProject.pinned)
+              } else if (regularConversation?.kind === 'regular') {
+                onToggleConversationPinned(
+                  regularConversation.conversation,
+                  !regularConversation.conversation.pinned,
+                )
+              } else if (openMenu.kind === 'projectConversation' && activeProjectConversation) {
+                onToggleProjectConversationPinned(
+                  openMenu.projectId,
+                  activeProjectConversation,
+                  !activeProjectConversation.pinned,
+                )
+              }
+              setOpenMenu(null)
+            }}
+          >
+            <span className="composer-popover-option-surface">
+              <FigmaIcon icon={menuProject ? projectMenuPinIcon : projectChatMenuPinIcon} />
+              <span className="composer-popover-option-label">
+                {menuProject
+                  ? menuProject.pinned
+                    ? '取消置顶'
+                    : '置顶项目'
+                  : regularConversation?.conversation.pinned || activeProjectConversation?.pinned
+                    ? '取消置顶'
+                    : '置顶对话'}
+              </span>
+            </span>
+          </button>
+          {menuProject ? (
+            <>
+              <button
+                className="composer-popover-option"
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpenMenu(null)
+                  onOpenProjectFolder(menuProject.id)
+                }}
+              >
+                <span className="composer-popover-option-surface">
+                  <FigmaIcon icon={projectMenuFolderOpenIcon} />
+                  <span className="composer-popover-option-label">在Finder中打开</span>
+                </span>
+              </button>
+              <button
+                className="composer-popover-option"
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpenMenu(null)
+                  onRequestRenameProject(menuProject)
+                }}
+              >
+                <span className="composer-popover-option-surface">
+                  <FigmaIcon icon={projectMenuSquarePenIcon} />
+                  <span className="composer-popover-option-label">重命名项目</span>
+                </span>
+              </button>
+              <button
+                className="composer-popover-option"
+                type="button"
+                role="menuitem"
+                onClick={() => setOpenMenu(null)}
+              >
+                <span className="composer-popover-option-surface">
+                  <FigmaIcon icon={projectMenuArchiveIcon} />
+                  <span className="composer-popover-option-label">归档对话</span>
+                </span>
+              </button>
+              <div className="composer-popover-separator" role="separator" />
+              <button
+                className="composer-popover-option"
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpenMenu(null)
+                  onRequestRemoveProject(menuProject)
+                }}
+              >
+                <span className="composer-popover-option-surface">
+                  <FigmaIcon icon={projectMenuXIcon} />
+                  <span className="composer-popover-option-label">移除</span>
+                </span>
+              </button>
+            </>
+          ) : null}
+          {regularConversation || activeProjectConversation ? (
+            <>
+              <button
+                className="composer-popover-option"
+                type="button"
+                role="menuitem"
+                onClick={() => setOpenMenu(null)}
+              >
+                <span className="composer-popover-option-surface">
+                  <FigmaIcon icon={projectChatMenuCopyIcon} />
+                  <span className="composer-popover-option-label">复制ID</span>
+                </span>
+              </button>
+              <button
+                className="composer-popover-option"
+                type="button"
+                role="menuitem"
+                onClick={() => setOpenMenu(null)}
+              >
+                <span className="composer-popover-option-surface">
+                  <FigmaIcon icon={projectChatMenuUploadIcon} />
+                  <span className="composer-popover-option-label">导出</span>
+                </span>
+              </button>
+              <button
+                className="composer-popover-option"
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  if (regularConversation?.kind === 'regular') {
+                    onRequestRenameConversation(regularConversation.conversation)
+                  } else if (openMenu.kind === 'projectConversation' && activeProjectConversation) {
+                    onRequestRenameProjectConversation(openMenu.projectId, activeProjectConversation)
+                  }
+                  setOpenMenu(null)
+                }}
+              >
+                <span className="composer-popover-option-surface">
+                  <FigmaIcon icon={projectChatMenuSquarePenIcon} />
+                  <span className="composer-popover-option-label">重命名</span>
+                </span>
+              </button>
+              <button
+                className="composer-popover-option"
+                type="button"
+                role="menuitem"
+                onClick={() => setOpenMenu(null)}
+              >
+                <span className="composer-popover-option-surface">
+                  <FigmaIcon icon={projectChatMenuArchiveIcon} />
+                  <span className="composer-popover-option-label">归档</span>
+                </span>
+              </button>
+              <div className="composer-popover-separator" role="separator" />
+              <button
+                className="composer-popover-option danger"
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  if (regularConversation?.kind === 'regular') {
+                    onRequestDeleteConversation(regularConversation.conversation)
+                  } else if (openMenu.kind === 'projectConversation' && activeProjectConversation) {
+                    onRequestDeleteProjectConversation(
+                      openMenu.projectId,
+                      activeProjectConversation,
+                    )
+                  }
+                  setOpenMenu(null)
+                }}
+              >
+                <span className="composer-popover-option-surface">
+                  <FigmaIcon icon={projectChatMenuTrashIcon} />
+                  <span className="composer-popover-option-label">删除</span>
+                </span>
+              </button>
+            </>
+          ) : null}
+        </div>,
+      ) : null}
     </section>
   )
 }
@@ -2230,36 +3789,442 @@ function ConversationSection({
   conversations,
   now,
   showActive,
+  isOpen,
+  onToggle,
+  onCreateConversation,
   onSelectConversation,
+  onToggleConversationPinned,
+  onRequestRenameConversation,
+  onRequestDeleteConversation,
 }: {
   conversations: ConversationRecord[]
   now: number
   showActive: boolean
+  isOpen: boolean
+  onToggle: () => void
+  onCreateConversation: AppActionHandler
   onSelectConversation: (conversationId: string) => void
+  onToggleConversationPinned: (conversation: ConversationRecord, pinned: boolean) => void
+  onRequestRenameConversation: (conversation: ConversationRecord) => void
+  onRequestDeleteConversation: (conversation: ConversationRecord) => void
 }) {
+  const visibleConversations =
+    conversations.map((conversation) => ({
+      ...conversation,
+      time: formatConversationTime(conversation.updatedAt ?? conversation.createdAt ?? now, now),
+      dateTime: new Date(conversation.updatedAt ?? conversation.createdAt ?? now).toISOString(),
+      active: showActive && conversation.active,
+      real: true,
+    }))
+  const [isConversationTitleMenuOpen, setIsConversationTitleMenuOpen] = useState(false)
+  const [isConversationSortMenuOpen, setIsConversationSortMenuOpen] = useState(false)
+  const [openConversationChatMenuId, setOpenConversationChatMenuId] = useState<string | null>(null)
+  const conversationTitleRef = useRef<HTMLHeadingElement | null>(null)
+  const conversationMoreButtonRef = useRef<HTMLButtonElement | null>(null)
+  const conversationMorePopoverRef = useRef<HTMLDivElement | null>(null)
+  const conversationSortMenuRef = useRef<HTMLButtonElement | null>(null)
+  const conversationSortPopoverRef = useRef<HTMLDivElement | null>(null)
+  const conversationChatRowRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const conversationChatPopoverRef = useRef<HTMLDivElement | null>(null)
+  const conversationMorePopoverStyle = useProjectTitlePopoverPlacement(
+    isConversationTitleMenuOpen,
+    conversationTitleRef,
+    conversationMorePopoverRef,
+    'more',
+    [isConversationTitleMenuOpen],
+  )
+  const conversationSortPopoverStyle = useProjectTitlePopoverPlacement(
+    isConversationSortMenuOpen,
+    conversationTitleRef,
+    conversationSortPopoverRef,
+    'sort',
+    [isConversationSortMenuOpen],
+  )
+  const conversationChatPopoverStyle = useOffsetPopoverPlacement(
+    Boolean(openConversationChatMenuId),
+    {
+      current: openConversationChatMenuId
+        ? conversationChatRowRefs.current[openConversationChatMenuId] ?? null
+        : null,
+    },
+    conversationChatPopoverRef,
+    { left: 60, top: 34 },
+    [openConversationChatMenuId],
+  )
+  const closeConversationTitleMenus = () => {
+    setIsConversationTitleMenuOpen(false)
+    setIsConversationSortMenuOpen(false)
+  }
+  const closeConversationChatMenu = () => {
+    setOpenConversationChatMenuId(null)
+  }
+  const closeAllConversationMenus = () => {
+    closeConversationTitleMenus()
+    closeConversationChatMenu()
+  }
+  const isConversationPopoverControl = (target: Node) =>
+    conversationMoreButtonRef.current?.contains(target) ||
+    conversationMorePopoverRef.current?.contains(target) ||
+    conversationSortPopoverRef.current?.contains(target) ||
+    conversationChatPopoverRef.current?.contains(target) ||
+    (target instanceof Element &&
+      Boolean(
+        target.closest(
+          '.conversation-section .nav-section-action, .conversation-section .chat-list-row-action',
+        ),
+      ))
+  const handleConversationSortPointerLeave = (event: ReactMouseEvent<HTMLElement>) => {
+    const relatedTarget = event.relatedTarget
+
+    if (
+      relatedTarget instanceof Node &&
+      (conversationSortMenuRef.current?.contains(relatedTarget) ||
+        conversationSortPopoverRef.current?.contains(relatedTarget))
+    ) {
+      return
+    }
+
+    setIsConversationSortMenuOpen(false)
+  }
+
+  useEffect(() => {
+    if (!isConversationTitleMenuOpen) {
+      setIsConversationSortMenuOpen(false)
+      return undefined
+    }
+
+    const closeMenu = (event: PointerEvent) => {
+      const target = event.target
+
+      if (!(target instanceof Node) || isConversationPopoverControl(target)) {
+        return
+      }
+
+      closeConversationTitleMenus()
+    }
+
+    document.addEventListener('pointerdown', closeMenu, true)
+    return () => {
+      document.removeEventListener('pointerdown', closeMenu, true)
+    }
+  }, [isConversationTitleMenuOpen])
+
+  useEffect(() => {
+    if (!openConversationChatMenuId) {
+      return undefined
+    }
+
+    const closeMenu = (event: PointerEvent) => {
+      const target = event.target
+
+      if (
+        !(target instanceof Node) ||
+        conversationChatRowRefs.current[openConversationChatMenuId]?.contains(target) ||
+        isConversationPopoverControl(target)
+      ) {
+        return
+      }
+
+      closeConversationChatMenu()
+    }
+
+    document.addEventListener('pointerdown', closeMenu, true)
+    return () => {
+      document.removeEventListener('pointerdown', closeMenu, true)
+    }
+  }, [openConversationChatMenuId])
+
   return (
-    <section className="nav-section conversation-section" aria-label="对话">
-      <h2>对话</h2>
-      {conversations.length > 0 ? (
-        <div className="conversation-list">
-          {conversations.map((conversation) => (
+    <section className={`nav-section conversation-section ${isOpen ? 'expanded' : 'collapsed'}`} aria-label="对话">
+      <div className={`nav-section-title-wrap ${isConversationTitleMenuOpen ? 'has-open-menu' : ''}`}>
+        <h2
+          className="conversation-section-title"
+          aria-expanded={isOpen}
+          ref={conversationTitleRef}
+          onClick={() => {
+            closeAllConversationMenus()
+            onToggle()
+          }}
+        >
+          <span className="nav-section-title-copy">
+            <span>对话</span>
+            <span className="nav-section-toggle-icon">
+              <FigmaIcon icon={isOpen ? chevronDownIcon : chevronRightIcon} />
+            </span>
+          </span>
+          <span className="nav-section-actions">
             <button
-              key={conversation.id}
-              className={`conversation-row ${showActive && conversation.active ? 'active' : ''}`}
+              className={`nav-section-action ${isConversationTitleMenuOpen ? 'active' : ''}`}
               type="button"
-              title={conversation.title}
-              onClick={() => onSelectConversation(conversation.id)}
+              aria-label="对话更多操作"
+              aria-expanded={isConversationTitleMenuOpen}
+              ref={conversationMoreButtonRef}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation()
+                setIsConversationTitleMenuOpen((isOpenMenu) => !isOpenMenu)
+                setIsConversationSortMenuOpen(false)
+                setOpenConversationChatMenuId(null)
+              }}
             >
-              <span>{conversation.title}</span>
-              <time dateTime={new Date(conversation.createdAt ?? now).toISOString()}>
-                {formatConversationTime(conversation.createdAt ?? now, now)}
-              </time>
+              <FigmaIcon icon={ellipsisIcon} />
             </button>
+            <button
+              className="nav-section-action"
+              type="button"
+              aria-label="新建对话"
+              onClick={(event) => {
+                event.stopPropagation()
+                closeAllConversationMenus()
+                onCreateConversation()
+              }}
+            >
+              <FigmaIcon icon={messageCirclePlusIcon} />
+            </button>
+          </span>
+        </h2>
+        {isConversationTitleMenuOpen ? renderFloatingPortal(
+          <div
+            className="composer-popover project-title-popover"
+            ref={conversationMorePopoverRef}
+            role="menu"
+            aria-label="对话更多操作"
+            style={conversationMorePopoverStyle}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="composer-popover-option"
+              type="button"
+              role="menuitem"
+              onClick={closeConversationTitleMenus}
+            >
+              <span className="composer-popover-option-surface">
+                <FigmaIcon icon={settingsArchiveIcon} />
+                <span className="composer-popover-option-label">归档所有聊天</span>
+              </span>
+            </button>
+            <div className="composer-popover-separator" role="separator" />
+            <button
+              className={`composer-popover-option project-sort-trigger ${
+                isConversationSortMenuOpen ? 'selected' : ''
+              }`}
+              type="button"
+              role="menuitem"
+              ref={conversationSortMenuRef}
+              aria-expanded={isConversationSortMenuOpen}
+              onMouseEnter={() => setIsConversationSortMenuOpen(true)}
+              onMouseLeave={handleConversationSortPointerLeave}
+              onClick={(event) => {
+                event.stopPropagation()
+                setIsConversationSortMenuOpen(true)
+              }}
+            >
+              <span className="composer-popover-option-surface">
+                <FigmaIcon icon={projectTitleClockIcon} />
+                <span className="composer-popover-option-label">排序条件</span>
+                <span className="composer-popover-option-chevron">
+                  <FigmaIcon icon={chevronRightIcon} />
+                </span>
+              </span>
+            </button>
+            {isConversationSortMenuOpen ? (
+              <div
+                className="composer-popover project-title-popover project-sort-popover"
+                ref={conversationSortPopoverRef}
+                role="menu"
+                aria-label="对话排序条件"
+                style={conversationSortPopoverStyle}
+                onMouseLeave={handleConversationSortPointerLeave}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <button
+                  className="composer-popover-option"
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked="false"
+                  onClick={closeConversationTitleMenus}
+                >
+                  <span className="composer-popover-option-surface">
+                    <FigmaIcon icon={messageCirclePlusIcon} />
+                    <span className="composer-popover-option-label">排序时间</span>
+                  </span>
+                </button>
+                <button
+                  className="composer-popover-option project-sort-selected-option selected"
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked="true"
+                  onClick={closeConversationTitleMenus}
+                >
+                  <span className="composer-popover-option-surface">
+                    <FigmaIcon icon={projectTitleMonitorSmartphoneIcon} />
+                    <span className="composer-popover-option-label">更新时间</span>
+                    <span className="composer-popover-check">
+                      <FigmaIcon icon={checkIcon} />
+                    </span>
+                  </span>
+                </button>
+              </div>
+            ) : null}
+          </div>,
+        ) : null}
+      </div>
+      <div
+        className={`nav-section-list conversation-list ${isOpen ? 'expanded' : 'collapsed'}`}
+        aria-hidden={!isOpen}
+      >
+        <div className="nav-section-list-inner">
+          {visibleConversations.length === 0 ? <div className="nav-empty-row">暂无对话</div> : null}
+          {visibleConversations.map((conversation) => (
+            <div className="nav-list-row-shell" key={conversation.id}>
+              <div
+                className={`nav-list-row conversation-row chat-list-row ${conversation.active ? 'active' : ''} ${
+                  openConversationChatMenuId === conversation.id ? 'has-open-menu' : ''
+                }`}
+                role="button"
+                tabIndex={0}
+                title={conversation.title}
+                ref={(node) => {
+                  conversationChatRowRefs.current[conversation.id] = node
+                }}
+                onClick={
+                  conversation.real
+                    ? () => {
+                        closeAllConversationMenus()
+                        onSelectConversation(conversation.id)
+                      }
+                    : closeAllConversationMenus
+                }
+                onKeyDown={(event) => {
+                  if (!conversation.real || (event.key !== 'Enter' && event.key !== ' ')) {
+                    return
+                  }
+
+                  event.preventDefault()
+                  closeAllConversationMenus()
+                  onSelectConversation(conversation.id)
+                }}
+              >
+                <span>{conversation.title}</span>
+                <time dateTime={conversation.dateTime}>{conversation.time}</time>
+                <span
+                  className="chat-list-row-actions"
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
+                  <button
+                    className={`chat-list-row-action ${
+                      openConversationChatMenuId === conversation.id ? 'active' : ''
+                    }`}
+                    type="button"
+                    aria-label={`${conversation.title}更多操作`}
+                    aria-expanded={openConversationChatMenuId === conversation.id}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      closeConversationTitleMenus()
+                      setOpenConversationChatMenuId((currentId) =>
+                        currentId === conversation.id ? null : conversation.id,
+                      )
+                    }}
+                  >
+                    <FigmaIcon icon={ellipsisIcon} />
+                  </button>
+                </span>
+              </div>
+              {openConversationChatMenuId === conversation.id ? renderFloatingPortal(
+                <div
+                  className="composer-popover project-title-popover project-chat-popover"
+                  ref={conversationChatPopoverRef}
+                  role="menu"
+                  aria-label={`${conversation.title}更多操作`}
+                  style={conversationChatPopoverStyle}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <button
+                    className="composer-popover-option"
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      closeConversationChatMenu()
+                      onToggleConversationPinned(conversation, !conversation.pinned)
+                    }}
+                  >
+                    <span className="composer-popover-option-surface">
+                      <FigmaIcon icon={projectChatMenuPinIcon} />
+                      <span className="composer-popover-option-label">
+                        {conversation.pinned ? '取消置顶' : '置顶对话'}
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    className="composer-popover-option"
+                    type="button"
+                    role="menuitem"
+                    onClick={closeConversationChatMenu}
+                  >
+                    <span className="composer-popover-option-surface">
+                      <FigmaIcon icon={projectChatMenuCopyIcon} />
+                      <span className="composer-popover-option-label">复制ID</span>
+                    </span>
+                  </button>
+                  <button
+                    className="composer-popover-option"
+                    type="button"
+                    role="menuitem"
+                    onClick={closeConversationChatMenu}
+                  >
+                    <span className="composer-popover-option-surface">
+                      <FigmaIcon icon={projectChatMenuUploadIcon} />
+                      <span className="composer-popover-option-label">导出</span>
+                    </span>
+                  </button>
+                  <button
+                    className="composer-popover-option"
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      closeConversationChatMenu()
+                      onRequestRenameConversation(conversation)
+                    }}
+                  >
+                    <span className="composer-popover-option-surface">
+                      <FigmaIcon icon={projectChatMenuSquarePenIcon} />
+                      <span className="composer-popover-option-label">重命名</span>
+                    </span>
+                  </button>
+                  <button
+                    className="composer-popover-option"
+                    type="button"
+                    role="menuitem"
+                    onClick={closeConversationChatMenu}
+                  >
+                    <span className="composer-popover-option-surface">
+                      <FigmaIcon icon={projectChatMenuArchiveIcon} />
+                      <span className="composer-popover-option-label">归档</span>
+                    </span>
+                  </button>
+                  <div className="composer-popover-separator" role="separator" />
+                  <button
+                    className="composer-popover-option danger"
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      closeConversationChatMenu()
+                      onRequestDeleteConversation(conversation)
+                    }}
+                  >
+                    <span className="composer-popover-option-surface">
+                      <FigmaIcon icon={projectChatMenuTrashIcon} />
+                      <span className="composer-popover-option-label">删除</span>
+                    </span>
+                  </button>
+                </div>,
+              ) : null}
+            </div>
           ))}
         </div>
-      ) : (
-        <div className="empty-nav-row">暂无对话</div>
-      )}
+      </div>
     </section>
   )
 }
@@ -6306,11 +8271,23 @@ function FileLibraryPage({
 }
 
 function Sidebar({
+  projects,
   conversations,
   now,
   activeView,
   activeSettingsSection,
   onNewChat,
+  onCreateBlankProject,
+  onChooseExistingProjectFolder,
+  onCreateProjectConversation,
+  onSelectProjectConversation,
+  onOpenProjectFolder,
+  onRequestRenameProject,
+  onRequestRemoveProject,
+  onToggleProjectPinned,
+  onToggleProjectConversationPinned,
+  onRequestRenameProjectConversation,
+  onRequestDeleteProjectConversation,
   onSearch,
   onOpenMessagePlatform,
   onOpenSkills,
@@ -6320,12 +8297,27 @@ function Sidebar({
   onSettingsSectionChange,
   onBackFromSettings,
   onSelectConversation,
+  onToggleConversationPinned,
+  onRequestRenameConversation,
+  onRequestDeleteConversation,
 }: {
+  projects: ProjectRecord[]
   conversations: ConversationRecord[]
   now: number
   activeView: AppView
   activeSettingsSection: SettingsSection
-  onNewChat: () => void
+  onNewChat: AppActionHandler
+  onCreateBlankProject: () => void
+  onChooseExistingProjectFolder: () => void
+  onCreateProjectConversation: (projectId: string) => void
+  onSelectProjectConversation: (projectId: string, conversationId: string) => void
+  onOpenProjectFolder: (projectId: string) => void
+  onRequestRenameProject: (project: ProjectRecord) => void
+  onRequestRemoveProject: (project: ProjectRecord) => void
+  onToggleProjectPinned: (projectId: string, pinned: boolean) => void
+  onToggleProjectConversationPinned: (projectId: string, conversation: ProjectConversationRecord, pinned: boolean) => void
+  onRequestRenameProjectConversation: (projectId: string, conversation: ProjectConversationRecord) => void
+  onRequestDeleteProjectConversation: (projectId: string, conversation: ProjectConversationRecord) => void
   onSearch: () => void
   onOpenMessagePlatform: () => void
   onOpenSkills: () => void
@@ -6335,7 +8327,39 @@ function Sidebar({
   onSettingsSectionChange: (section: SettingsSection) => void
   onBackFromSettings: () => void
   onSelectConversation: (conversationId: string) => void
+  onToggleConversationPinned: (conversation: ConversationRecord, pinned: boolean) => void
+  onRequestRenameConversation: (conversation: ConversationRecord) => void
+  onRequestDeleteConversation: (conversation: ConversationRecord) => void
 }) {
+  const [isProjectSectionOpen, setIsProjectSectionOpen] = useState(true)
+  const [isConversationSectionOpen, setIsConversationSectionOpen] = useState(true)
+  const [isPinnedSectionOpen, setIsPinnedSectionOpen] = useState(true)
+  const pinnedProjects = projects.filter((project) => project.pinned)
+  const pinnedProjectConversations: PinnedConversationItem[] = projects.flatMap((project) =>
+    project.conversations
+      .filter((conversation) => conversation.pinned)
+      .map((conversation) => ({
+        kind: 'project' as const,
+        projectId: project.id,
+        conversation,
+      })),
+  )
+  const pinnedRegularConversations: PinnedConversationItem[] = conversations
+    .filter((conversation) => conversation.pinned)
+    .map((conversation) => ({
+      kind: 'regular' as const,
+      conversation,
+    }))
+  const pinnedConversations = [...pinnedProjectConversations, ...pinnedRegularConversations]
+  const hasPinnedItems = pinnedProjects.length > 0 || pinnedConversations.length > 0
+  const visibleProjects = projects
+    .filter((project) => !project.pinned)
+    .map((project) => ({
+      ...project,
+      conversations: project.conversations.filter((conversation) => !conversation.pinned),
+    }))
+  const visibleConversations = conversations.filter((conversation) => !conversation.pinned)
+
   if (activeView === 'settings') {
     return (
       <SettingsSidebar
@@ -6374,12 +8398,56 @@ function Sidebar({
       </nav>
 
       <div className="side-scroll">
-        <EmptySection title="项目" emptyText="暂无项目" />
+        {hasPinnedItems ? (
+          <PinnedSection
+            projects={pinnedProjects}
+            conversations={pinnedConversations}
+            now={now}
+            isOpen={isPinnedSectionOpen}
+            onToggle={() => setIsPinnedSectionOpen((isOpen) => !isOpen)}
+            onCreateProjectConversation={onCreateProjectConversation}
+            onSelectProjectConversation={onSelectProjectConversation}
+            onSelectConversation={onSelectConversation}
+            onOpenProjectFolder={onOpenProjectFolder}
+            onRequestRenameProject={onRequestRenameProject}
+            onRequestRemoveProject={onRequestRemoveProject}
+            onToggleProjectPinned={onToggleProjectPinned}
+            onToggleProjectConversationPinned={onToggleProjectConversationPinned}
+            onToggleConversationPinned={onToggleConversationPinned}
+            onRequestRenameProjectConversation={onRequestRenameProjectConversation}
+            onRequestRenameConversation={onRequestRenameConversation}
+            onRequestDeleteProjectConversation={onRequestDeleteProjectConversation}
+            onRequestDeleteConversation={onRequestDeleteConversation}
+          />
+        ) : null}
+        <ProjectSection
+          projects={visibleProjects}
+          now={now}
+          isOpen={isProjectSectionOpen}
+          onToggle={() => setIsProjectSectionOpen((isOpen) => !isOpen)}
+          onCreateBlankProject={onCreateBlankProject}
+          onChooseExistingProjectFolder={onChooseExistingProjectFolder}
+          onCreateProjectConversation={onCreateProjectConversation}
+          onSelectProjectConversation={onSelectProjectConversation}
+          onOpenProjectFolder={onOpenProjectFolder}
+          onRequestRenameProject={onRequestRenameProject}
+          onRequestRemoveProject={onRequestRemoveProject}
+          onToggleProjectPinned={onToggleProjectPinned}
+          onToggleProjectConversationPinned={onToggleProjectConversationPinned}
+          onRequestRenameProjectConversation={onRequestRenameProjectConversation}
+          onRequestDeleteProjectConversation={onRequestDeleteProjectConversation}
+        />
         <ConversationSection
-          conversations={conversations}
+          conversations={visibleConversations}
           now={now}
           showActive={activeView === 'chat'}
+          isOpen={isConversationSectionOpen}
+          onToggle={() => setIsConversationSectionOpen((isOpen) => !isOpen)}
+          onCreateConversation={onNewChat}
           onSelectConversation={onSelectConversation}
+          onToggleConversationPinned={onToggleConversationPinned}
+          onRequestRenameConversation={onRequestRenameConversation}
+          onRequestDeleteConversation={onRequestDeleteConversation}
         />
       </div>
 
@@ -6403,6 +8471,8 @@ function GlobalTitleBar({
   activeConversationId,
   activeConversationTitle,
   activeConversationMessages,
+  activeConversation,
+  activeChatTarget,
   hasChat,
   isSkillsTitleDocked,
   activeSkillsSection,
@@ -6414,7 +8484,10 @@ function GlobalTitleBar({
   settingsTitlebar,
   isChatRightPanelOpen,
   onPlatformTitleSwitchToggle,
-  onConversationTitleRename,
+  onToggleConversationPinned,
+  onToggleProjectConversationPinned,
+  onRequestRenameConversation,
+  onRequestRenameProjectConversation,
   onConversationTitleToast,
   onToggleChatRightPanel,
   onToggleSidebar,
@@ -6424,26 +8497,29 @@ function GlobalTitleBar({
   activeConversationId: string
   activeConversationTitle: string
   activeConversationMessages: ChatMessage[]
+  activeConversation?: ConversationRecord | ProjectConversationRecord
+  activeChatTarget: ActiveChatTarget
   hasChat: boolean
   isSkillsTitleDocked: boolean
   activeSkillsSection: 'skills' | 'employees'
   onActiveSkillsSectionChange: (section: 'skills' | 'employees') => void
   isScheduledTitleDocked: boolean
-  onScheduledCreateChat: () => void
+  onScheduledCreateChat: AppActionHandler
   platformTitlebar: PlatformTitlebarState
   fileLibraryTitlebar: PlatformTitlebarState
   settingsTitlebar: SettingsTitlebarState
   isChatRightPanelOpen: boolean
   onPlatformTitleSwitchToggle: () => void
-  onConversationTitleRename: (title: string) => void
+  onToggleConversationPinned: (conversation: ConversationRecord, pinned: boolean) => void
+  onToggleProjectConversationPinned: (projectId: string, conversation: ProjectConversationRecord, pinned: boolean) => void
+  onRequestRenameConversation: (conversation: ConversationRecord) => void
+  onRequestRenameProjectConversation: (projectId: string, conversation: ProjectConversationRecord) => void
   onConversationTitleToast: (message: string) => void
   onToggleChatRightPanel: () => void
   onToggleSidebar: () => void
 }) {
   const [isScheduledTitleCreateOpen, setIsScheduledTitleCreateOpen] = useState(false)
   const [isConversationMenuOpen, setIsConversationMenuOpen] = useState(false)
-  const [isConversationRenameOpen, setIsConversationRenameOpen] = useState(false)
-  const [conversationRenameTitle, setConversationRenameTitle] = useState(activeConversationTitle)
   const scheduledTitleCreateRef = useRef<HTMLDivElement | null>(null)
   const scheduledTitleCreatePopoverRef = useRef<HTMLDivElement | null>(null)
   const conversationTitleMoreRef = useRef<HTMLButtonElement | null>(null)
@@ -6520,7 +8596,6 @@ function GlobalTitleBar({
   useEffect(() => {
     if (activeView !== 'chat' || !hasChat) {
       setIsConversationMenuOpen(false)
-      setIsConversationRenameOpen(false)
     }
   }, [activeView, hasChat])
 
@@ -6529,27 +8604,66 @@ function GlobalTitleBar({
       return undefined
     }
 
-    const closeConversationMenu = (event: PointerEvent) => {
+    let closeTimer = 0
+    let fallbackTimer = 0
+    let shouldCloseAfterClick = false
+    const isConversationMenuTarget = (target: EventTarget | null) => {
+      if (!(target instanceof Node)) {
+        return false
+      }
+
+      return Boolean(
+        conversationTitleMoreRef.current?.contains(target) ||
+          conversationTitlePopoverRef.current?.contains(target),
+      )
+    }
+    const scheduleCloseConversationMenu = () => {
+      window.clearTimeout(closeTimer)
+      closeTimer = window.setTimeout(() => {
+        setIsConversationMenuOpen(false)
+      }, 0)
+    }
+    const markConversationMenuDismiss = (event: PointerEvent) => {
       const target = event.target
 
-      if (!(target instanceof Node)) {
+      if (isConversationMenuTarget(target)) {
         return
       }
 
-      if (
-        conversationTitleMoreRef.current?.contains(target) ||
-        conversationTitlePopoverRef.current?.contains(target)
-      ) {
+      shouldCloseAfterClick = true
+      window.clearTimeout(fallbackTimer)
+      fallbackTimer = window.setTimeout(() => {
+        if (shouldCloseAfterClick) {
+          scheduleCloseConversationMenu()
+        }
+      }, 220)
+    }
+    const closeConversationMenuAfterClick = (event: MouseEvent) => {
+      const target = event.target
+
+      if (isConversationMenuTarget(target)) {
+        shouldCloseAfterClick = false
+        window.clearTimeout(fallbackTimer)
         return
       }
 
-      setIsConversationMenuOpen(false)
+      if (!shouldCloseAfterClick) {
+        return
+      }
+
+      shouldCloseAfterClick = false
+      window.clearTimeout(fallbackTimer)
+      scheduleCloseConversationMenu()
     }
 
-    document.addEventListener('pointerdown', closeConversationMenu)
+    document.addEventListener('pointerdown', markConversationMenuDismiss, true)
+    document.addEventListener('click', closeConversationMenuAfterClick, true)
 
     return () => {
-      document.removeEventListener('pointerdown', closeConversationMenu)
+      window.clearTimeout(closeTimer)
+      window.clearTimeout(fallbackTimer)
+      document.removeEventListener('pointerdown', markConversationMenuDismiss, true)
+      document.removeEventListener('click', closeConversationMenuAfterClick, true)
     }
   }, [isConversationMenuOpen])
 
@@ -6591,6 +8705,53 @@ function GlobalTitleBar({
     [onConversationTitleToast],
   )
 
+  const activeConversationPinned = activeConversation?.pinned ?? false
+  const toggleActiveConversationPinned = useCallback(() => {
+    if (!activeConversation) {
+      return
+    }
+
+    if (activeChatTarget.kind === 'project') {
+      onToggleProjectConversationPinned(
+        activeChatTarget.projectId,
+        activeConversation as ProjectConversationRecord,
+        !activeConversationPinned,
+      )
+    } else {
+      onToggleConversationPinned(activeConversation as ConversationRecord, !activeConversationPinned)
+    }
+
+    setIsConversationMenuOpen(false)
+  }, [
+    activeChatTarget,
+    activeConversation,
+    activeConversationPinned,
+    onToggleConversationPinned,
+    onToggleProjectConversationPinned,
+  ])
+
+  const renameActiveTitleConversation = useCallback(() => {
+    if (!activeConversation) {
+      return
+    }
+
+    if (activeChatTarget.kind === 'project') {
+      onRequestRenameProjectConversation(
+        activeChatTarget.projectId,
+        activeConversation as ProjectConversationRecord,
+      )
+    } else {
+      onRequestRenameConversation(activeConversation as ConversationRecord)
+    }
+
+    setIsConversationMenuOpen(false)
+  }, [
+    activeChatTarget,
+    activeConversation,
+    onRequestRenameConversation,
+    onRequestRenameProjectConversation,
+  ])
+
   const copyConversationText = useCallback((value: string) => {
     if (!value) {
       return
@@ -6609,23 +8770,6 @@ function GlobalTitleBar({
         .join('\n\n'),
     [activeConversationMessages],
   )
-
-  const openConversationRenameDialog = useCallback(() => {
-    setConversationRenameTitle(activeConversationTitle)
-    setIsConversationMenuOpen(false)
-    setIsConversationRenameOpen(true)
-  }, [activeConversationTitle])
-
-  const submitConversationRename = useCallback(() => {
-    const nextTitle = conversationRenameTitle.trim()
-
-    if (!nextTitle) {
-      return
-    }
-
-    onConversationTitleRename(nextTitle)
-    setIsConversationRenameOpen(false)
-  }, [conversationRenameTitle, onConversationTitleRename])
 
   return (
     <>
@@ -6833,19 +8977,23 @@ function GlobalTitleBar({
                 className="composer-popover-option"
                 type="button"
                 role="menuitem"
-                onClick={() => closeConversationMenuWithToast('已置顶对话')}
+                onClick={toggleActiveConversationPinned}
               >
                 <span className="composer-popover-option-surface">
-                  <span className="composer-popover-option-label">置顶对话</span>
+                  <FigmaIcon icon={projectChatMenuPinIcon} />
+                  <span className="composer-popover-option-label">
+                    {activeConversationPinned ? '取消置顶' : '置顶对话'}
+                  </span>
                 </span>
               </button>
               <button
                 className="composer-popover-option"
                 type="button"
                 role="menuitem"
-                onClick={openConversationRenameDialog}
+                onClick={renameActiveTitleConversation}
               >
                 <span className="composer-popover-option-surface">
+                  <FigmaIcon icon={projectChatMenuSquarePenIcon} />
                   <span className="composer-popover-option-label">重命名对话</span>
                 </span>
               </button>
@@ -6856,6 +9004,7 @@ function GlobalTitleBar({
                 onClick={() => closeConversationMenuWithToast('已归档对话')}
               >
                 <span className="composer-popover-option-surface">
+                  <FigmaIcon icon={projectChatMenuArchiveIcon} />
                   <span className="composer-popover-option-label">归档对话</span>
                 </span>
               </button>
@@ -6870,6 +9019,7 @@ function GlobalTitleBar({
                 }}
               >
                 <span className="composer-popover-option-surface">
+                  <FigmaIcon icon={projectChatMenuCopyIcon} />
                   <span className="composer-popover-option-label">复制对话ID</span>
                 </span>
               </button>
@@ -6883,45 +9033,10 @@ function GlobalTitleBar({
                 }}
               >
                 <span className="composer-popover-option-surface">
+                  <FigmaIcon icon={projectChatMenuCopyIcon} />
                   <span className="composer-popover-option-label">复制为 Markdown</span>
                 </span>
               </button>
-            </div>,
-            document.body,
-          )
-        : null}
-      {isConversationRenameOpen
-        ? createPortal(
-            <div className="skills-modal-overlay modal-fade-layer" role="presentation">
-              <section className="skills-github-dialog conversation-rename-dialog modal-pop-surface" role="dialog" aria-modal="true" aria-label="重命名对话">
-                <header className="skills-github-heading">
-                  <h2>重命名对话</h2>
-                  <button type="button" aria-label="关闭" onClick={() => setIsConversationRenameOpen(false)}>
-                    <FigmaIcon icon={modalXIcon} />
-                  </button>
-                </header>
-                <div className="skills-github-content">
-                  <input
-                    value={conversationRenameTitle}
-                    autoFocus
-                    placeholder="请输入对话标题"
-                    onChange={(event) => setConversationRenameTitle(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        submitConversationRename()
-                      }
-                    }}
-                  />
-                </div>
-                <footer className="skills-github-actions">
-                  <button type="button" onClick={() => setIsConversationRenameOpen(false)}>
-                    取消
-                  </button>
-                  <button type="button" onClick={submitConversationRename} disabled={!conversationRenameTitle.trim()}>
-                    确定
-                  </button>
-                </footer>
-              </section>
             </div>,
             document.body,
           )
@@ -7771,7 +9886,7 @@ function Content({
   activeSettingsSection: SettingsSection
   activeSkillsSection: 'skills' | 'employees'
   onActiveSkillsSectionChange: (section: 'skills' | 'employees') => void
-  onStartNewChat: () => void
+  onStartNewChat: AppActionHandler
   onSkillsTitleDockedChange: (isDocked: boolean) => void
   onScheduledTitleDockedChange: (isDocked: boolean) => void
   onSettingsTitlebarChange: (state: SettingsTitlebarState) => void
@@ -7949,7 +10064,12 @@ function App() {
   const [newChatFocusNonce, setNewChatFocusNonce] = useState(0)
   const [activeView, setActiveView] = useState<AppView>('chat')
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [projects, setProjects] = useState<ProjectRecord[]>([])
   const [conversations, setConversations] = useState<ConversationRecord[]>([])
+  const [activeChatTarget, setActiveChatTarget] = useState<ActiveChatTarget>({
+    kind: 'regular',
+    conversationId: null,
+  })
   const [pendingConversationIds, setPendingConversationIds] = useState<string[]>([])
   const [chatScrollPositions, setChatScrollPositions] = useState<Record<string, number>>({})
   const [now, setNow] = useState(() => Date.now())
@@ -7958,6 +10078,15 @@ function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isSearchClosing, setIsSearchClosing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [isProjectNameDialogOpen, setIsProjectNameDialogOpen] = useState(false)
+  const [projectNameDialogMode, setProjectNameDialogMode] = useState<ProjectNameDialogMode | null>(null)
+  const [projectNameInput, setProjectNameInput] = useState('')
+  const [projectNameError, setProjectNameError] = useState<string | null>(null)
+  const [pendingProjectRemove, setPendingProjectRemove] = useState<PendingProjectRemove | null>(null)
+  const [pendingConversationRename, setPendingConversationRename] = useState<PendingConversationRename | null>(null)
+  const [conversationRenameInput, setConversationRenameInput] = useState('')
+  const [conversationRenameError, setConversationRenameError] = useState<string | null>(null)
+  const [pendingConversationDelete, setPendingConversationDelete] = useState<PendingConversationDelete | null>(null)
   const [activeSkillsSection, setActiveSkillsSection] = useState<'skills' | 'employees'>('skills')
   const [isSkillsTitleDocked, setIsSkillsTitleDocked] = useState(false)
   const [isScheduledTitleDocked, setIsScheduledTitleDocked] = useState(false)
@@ -7997,7 +10126,15 @@ function App() {
   ]
     .filter(Boolean)
     .join(' ')
-  const activeConversation = conversations.find((conversation) => conversation.active)
+  const activeRegularConversation = conversations.find((conversation) => conversation.active)
+  const activeProject = activeChatTarget.kind === 'project'
+    ? projects.find((project) => project.id === activeChatTarget.projectId)
+    : undefined
+  const activeProjectConversation =
+    activeProject && activeChatTarget.kind === 'project' && activeChatTarget.conversationId
+      ? activeProject.conversations.find((conversation) => conversation.id === activeChatTarget.conversationId)
+      : undefined
+  const activeConversation = activeChatTarget.kind === 'project' ? activeProjectConversation : activeRegularConversation
   const activeConversationId = activeConversation?.id ?? ''
   const isActiveConversationSending = activeConversation
     ? pendingConversationIds.includes(activeConversation.id)
@@ -8027,28 +10164,147 @@ function App() {
     })
   }, [])
 
+  const loadWorkspace = useCallback(async () => {
+    if (!window.__TAURI_INTERNALS__) {
+      return
+    }
+
+    try {
+      const workspace = await invoke<HermesWorkspace>('load_hermes_workspace')
+      setProjects(workspace.projects)
+      setConversations((currentConversations) => {
+        const activeId = currentConversations.find((conversation) => conversation.active)?.id
+
+        return workspace.conversations.map((conversation) => ({
+          ...conversation,
+          active: activeChatTarget.kind === 'regular' && conversation.id === activeId,
+        }))
+      })
+    } catch (error) {
+      setChatError(error instanceof Error ? error.message : String(error))
+    }
+  }, [activeChatTarget.kind])
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      void loadWorkspace()
+    }
+  }, [isAuthenticated, loadWorkspace])
+
   const closeAppToast = useCallback(() => {
     setAppToast(null)
   }, [])
 
-  const renameActiveConversation = useCallback((nextTitle: string) => {
-    const title = nextTitle.trim()
+  const openBlankProjectDialog = useCallback(() => {
+    const existingNames = new Set(projects.map((project) => project.title))
+    let index = projects.length + 1
+    let candidate = `新建项目${index}`
+
+    while (existingNames.has(candidate)) {
+      index += 1
+      candidate = `新建项目${index}`
+    }
+
+    setProjectNameInput(candidate)
+    setProjectNameError(null)
+    setProjectNameDialogMode({ kind: 'create' })
+    setIsProjectNameDialogOpen(true)
+  }, [projects])
+
+  const openProjectRenameDialog = useCallback((project: ProjectRecord) => {
+    setProjectNameInput(project.title)
+    setProjectNameError(null)
+    setProjectNameDialogMode({ kind: 'rename', project })
+    setIsProjectNameDialogOpen(true)
+  }, [])
+
+  const closeProjectNameDialog = useCallback(() => {
+    setIsProjectNameDialogOpen(false)
+    setProjectNameDialogMode(null)
+    setProjectNameError(null)
+  }, [])
+
+  const confirmProjectNameDialog = useCallback(async () => {
+    const title = projectNameInput.trim()
 
     if (!title) {
+      setProjectNameError('项目名称不能为空')
       return
     }
 
-    setConversations((currentConversations) =>
-      currentConversations.map((conversation) =>
-        conversation.active
-          ? {
-              ...conversation,
-              title,
-            }
-          : conversation,
-      ),
-    )
-  }, [])
+    if (!window.__TAURI_INTERNALS__) {
+      setProjectNameError('请在桌面端运行，本地浏览器预览无法创建项目文件夹。')
+      return
+    }
+
+    try {
+      if (projectNameDialogMode?.kind === 'rename') {
+        const renamedProject = await invoke<ProjectRecord>('rename_hermes_project', {
+          projectId: projectNameDialogMode.project.id,
+          title,
+        })
+        setProjects((currentProjects) =>
+          currentProjects.map((project) =>
+            project.id === renamedProject.id
+              ? {
+                  ...renamedProject,
+                  conversations: project.conversations,
+                }
+              : project,
+          ),
+        )
+        showAppToast('项目已重命名')
+      } else {
+        const project = await invoke<ProjectRecord>('create_hermes_project', { title })
+        setProjects((currentProjects) => [project, ...currentProjects])
+        showAppToast('项目已创建')
+      }
+
+      closeProjectNameDialog()
+    } catch (error) {
+      setProjectNameError(error instanceof Error ? error.message : String(error))
+    }
+  }, [closeProjectNameDialog, projectNameDialogMode, projectNameInput, showAppToast])
+
+  const openProjectFolder = useCallback(
+    async (projectId: string) => {
+      if (!window.__TAURI_INTERNALS__) {
+        setChatError('请在桌面端运行，本地浏览器预览无法打开项目文件夹。')
+        return
+      }
+
+      try {
+        await invoke('open_project_folder', { projectId })
+      } catch (error) {
+        setChatError(error instanceof Error ? error.message : String(error))
+      }
+    },
+    [],
+  )
+
+  const chooseExistingProjectFolder = useCallback(async () => {
+    if (!window.__TAURI_INTERNALS__) {
+      setChatError('请在桌面端运行，本地浏览器预览无法选择本机文件夹。')
+      return
+    }
+
+    try {
+      showAppToast('正在打开文件夹选择器')
+      const project = await invoke<ProjectRecord | null>('choose_existing_project_folder')
+
+      if (!project) {
+        return
+      }
+
+      setProjects((currentProjects) => [
+        project,
+        ...currentProjects.filter((currentProject) => currentProject.id !== project.id),
+      ])
+      showAppToast('项目已添加')
+    } catch (error) {
+      setChatError(error instanceof Error ? error.message : String(error))
+    }
+  }, [showAppToast])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -8102,6 +10358,22 @@ function App() {
     setActiveView('chat')
     setNewChatFocusNonce((nonce) => nonce + 1)
     activeConversationIdRef.current = null
+    setActiveChatTarget({ kind: 'regular', conversationId: null })
+    setMessages([])
+    setChatError(null)
+    setConversations((currentConversations) =>
+      currentConversations.map((conversation) => ({
+        ...conversation,
+        active: false,
+      })),
+    )
+  }, [])
+
+  const startProjectChat = useCallback((projectId: string) => {
+    setActiveView('chat')
+    setNewChatFocusNonce((nonce) => nonce + 1)
+    activeConversationIdRef.current = null
+    setActiveChatTarget({ kind: 'project', projectId, conversationId: null })
     setMessages([])
     setChatError(null)
     setConversations((currentConversations) =>
@@ -8211,6 +10483,7 @@ function App() {
       setActiveView('chat')
       setMessages(selectedConversation.messages)
       activeConversationIdRef.current = selectedConversation.id
+      setActiveChatTarget({ kind: 'regular', conversationId: selectedConversation.id })
       setChatError(null)
       setConversations((currentConversations) =>
         currentConversations.map((conversation) => ({
@@ -8222,6 +10495,32 @@ function App() {
     [conversations],
   )
 
+  const selectProjectConversation = useCallback(
+    (projectId: string, conversationId: string) => {
+      const selectedProject = projects.find((project) => project.id === projectId)
+      const selectedConversation = selectedProject?.conversations.find(
+        (conversation) => conversation.id === conversationId,
+      )
+
+      if (!selectedProject || !selectedConversation) {
+        return
+      }
+
+      setActiveView('chat')
+      setMessages(selectedConversation.messages)
+      activeConversationIdRef.current = selectedConversation.id
+      setActiveChatTarget({ kind: 'project', projectId, conversationId })
+      setChatError(null)
+      setConversations((currentConversations) =>
+        currentConversations.map((conversation) => ({
+          ...conversation,
+          active: false,
+        })),
+      )
+    },
+    [projects],
+  )
+
   const selectConversationFromSearch = useCallback(
     (conversationId: string) => {
       selectConversation(conversationId)
@@ -8229,6 +10528,365 @@ function App() {
     },
     [closeSearch, selectConversation],
   )
+
+  const requestDeleteConversation = useCallback((conversation: ConversationRecord) => {
+    setPendingConversationDelete({ kind: 'regular', conversation })
+  }, [])
+
+  const requestDeleteProjectConversation = useCallback(
+    (projectId: string, conversation: ProjectConversationRecord) => {
+      setPendingConversationDelete({ kind: 'project', projectId, conversation })
+    },
+    [],
+  )
+
+  const requestRemoveProject = useCallback((project: ProjectRecord) => {
+    setPendingProjectRemove({ project })
+  }, [])
+
+  const requestRenameConversation = useCallback((conversation: ConversationRecord) => {
+    setPendingConversationRename({ kind: 'regular', conversation })
+    setConversationRenameInput(conversation.title)
+    setConversationRenameError(null)
+  }, [])
+
+  const requestRenameProjectConversation = useCallback(
+    (projectId: string, conversation: ProjectConversationRecord) => {
+      setPendingConversationRename({ kind: 'project', projectId, conversation })
+      setConversationRenameInput(conversation.title)
+      setConversationRenameError(null)
+    },
+    [],
+  )
+
+  const confirmRemoveProject = useCallback(async () => {
+    if (!pendingProjectRemove) {
+      return
+    }
+
+    const { project } = pendingProjectRemove
+
+    try {
+      if (window.__TAURI_INTERNALS__) {
+        await invoke('remove_hermes_project', { projectId: project.id })
+      }
+
+      setProjects((currentProjects) =>
+        currentProjects.filter((currentProject) => currentProject.id !== project.id),
+      )
+
+      if (activeChatTarget.kind === 'project' && activeChatTarget.projectId === project.id) {
+        activeConversationIdRef.current = null
+        setActiveChatTarget({ kind: 'regular', conversationId: null })
+        setMessages([])
+        setChatError(null)
+        setNewChatFocusNonce((nonce) => nonce + 1)
+      }
+
+      setPendingConversationIds((currentIds) => {
+        const removedConversationIds = new Set(project.conversations.map((conversation) => conversation.id))
+        return currentIds.filter((conversationId) => !removedConversationIds.has(conversationId))
+      })
+      setPendingProjectRemove(null)
+      showAppToast('项目已移除')
+    } catch (error) {
+      setPendingProjectRemove(null)
+      setChatError(error instanceof Error ? error.message : String(error))
+    }
+  }, [activeChatTarget, pendingProjectRemove, showAppToast])
+
+  const toggleProjectPinned = useCallback(async (projectId: string, pinned: boolean) => {
+    setProjects((currentProjects) =>
+      currentProjects.map((project) =>
+        project.id === projectId
+          ? {
+              ...project,
+              pinned,
+            }
+          : project,
+      ),
+    )
+
+    if (!window.__TAURI_INTERNALS__) {
+      return
+    }
+
+    try {
+      const savedProject = await invoke<ProjectRecord>('set_project_pinned', { projectId, pinned })
+      setProjects((currentProjects) =>
+        currentProjects.map((project) =>
+          project.id === savedProject.id
+            ? {
+                ...savedProject,
+                conversations: project.conversations,
+              }
+            : project,
+        ),
+      )
+    } catch (error) {
+      setChatError(error instanceof Error ? error.message : String(error))
+      void loadWorkspace()
+    }
+  }, [loadWorkspace])
+
+  const toggleConversationPinned = useCallback(
+    async (conversation: ConversationRecord, pinned: boolean) => {
+      setConversations((currentConversations) =>
+        currentConversations.map((currentConversation) =>
+          currentConversation.id === conversation.id
+            ? {
+                ...currentConversation,
+                pinned,
+              }
+            : currentConversation,
+        ),
+      )
+
+      if (!window.__TAURI_INTERNALS__ || !conversation.path) {
+        return
+      }
+
+      try {
+        const savedConversation = await invoke<ConversationRecord>('set_regular_conversation_pinned', {
+          path: conversation.path,
+          pinned,
+        })
+        setConversations((currentConversations) =>
+          currentConversations.map((currentConversation) =>
+            currentConversation.id === savedConversation.id
+              ? {
+                  ...savedConversation,
+                  active: currentConversation.active,
+                }
+              : currentConversation,
+          ),
+        )
+      } catch (error) {
+        setChatError(error instanceof Error ? error.message : String(error))
+        void loadWorkspace()
+      }
+    },
+    [loadWorkspace],
+  )
+
+  const toggleProjectConversationPinned = useCallback(
+    async (projectId: string, conversation: ProjectConversationRecord, pinned: boolean) => {
+      setProjects((currentProjects) =>
+        currentProjects.map((project) =>
+          project.id === projectId
+            ? {
+                ...project,
+                conversations: project.conversations.map((currentConversation) =>
+                  currentConversation.id === conversation.id
+                    ? {
+                        ...currentConversation,
+                        pinned,
+                      }
+                    : currentConversation,
+                ),
+              }
+            : project,
+        ),
+      )
+
+      if (!window.__TAURI_INTERNALS__ || !conversation.path) {
+        return
+      }
+
+      try {
+        const savedConversation = await invoke<ProjectConversationRecord>('set_project_conversation_pinned', {
+          projectId,
+          path: conversation.path,
+          pinned,
+        })
+        setProjects((currentProjects) =>
+          currentProjects.map((project) =>
+            project.id === projectId
+              ? {
+                  ...project,
+                  conversations: project.conversations.map((currentConversation) =>
+                    currentConversation.id === savedConversation.id ? savedConversation : currentConversation,
+                  ),
+                }
+              : project,
+          ),
+        )
+      } catch (error) {
+        setChatError(error instanceof Error ? error.message : String(error))
+        void loadWorkspace()
+      }
+    },
+    [loadWorkspace],
+  )
+
+  const confirmDeleteConversation = useCallback(async () => {
+    if (!pendingConversationDelete) {
+      return
+    }
+
+    const { conversation } = pendingConversationDelete
+
+    try {
+      if (window.__TAURI_INTERNALS__ && conversation.path) {
+        if (pendingConversationDelete.kind === 'regular') {
+          await invoke('delete_regular_conversation', { path: conversation.path })
+        } else {
+          await invoke('delete_project_conversation', {
+            projectId: pendingConversationDelete.projectId,
+            path: conversation.path,
+          })
+        }
+      }
+
+      if (pendingConversationDelete.kind === 'regular') {
+        setConversations((currentConversations) =>
+          currentConversations.filter((currentConversation) => currentConversation.id !== conversation.id),
+        )
+
+        if (activeChatTarget.kind === 'regular' && activeChatTarget.conversationId === conversation.id) {
+          activeConversationIdRef.current = null
+          setActiveChatTarget({ kind: 'regular', conversationId: null })
+          setMessages([])
+          setChatError(null)
+          setNewChatFocusNonce((nonce) => nonce + 1)
+        }
+      } else {
+        const { projectId } = pendingConversationDelete
+
+        setProjects((currentProjects) =>
+          currentProjects.map((project) =>
+            project.id === projectId
+              ? {
+                  ...project,
+                  conversations: project.conversations.filter(
+                    (currentConversation) => currentConversation.id !== conversation.id,
+                  ),
+                }
+              : project,
+          ),
+        )
+
+        if (
+          activeChatTarget.kind === 'project' &&
+          activeChatTarget.projectId === projectId &&
+          activeChatTarget.conversationId === conversation.id
+        ) {
+          activeConversationIdRef.current = null
+          setActiveChatTarget({ kind: 'project', projectId, conversationId: null })
+          setMessages([])
+          setChatError(null)
+          setNewChatFocusNonce((nonce) => nonce + 1)
+        }
+      }
+
+      setPendingConversationIds((currentIds) =>
+        currentIds.filter((conversationId) => conversationId !== conversation.id),
+      )
+      setChatScrollPositions((currentPositions) => {
+        if (!(conversation.id in currentPositions)) {
+          return currentPositions
+        }
+
+        const nextPositions = { ...currentPositions }
+        delete nextPositions[conversation.id]
+        return nextPositions
+      })
+      setPendingConversationDelete(null)
+      showAppToast('对话已删除')
+    } catch (error) {
+      setPendingConversationDelete(null)
+      setChatError(error instanceof Error ? error.message : String(error))
+    }
+  }, [activeChatTarget, pendingConversationDelete, showAppToast])
+
+  const closeConversationRenameDialog = useCallback(() => {
+    setPendingConversationRename(null)
+    setConversationRenameError(null)
+  }, [])
+
+  const confirmRenameConversation = useCallback(async () => {
+    if (!pendingConversationRename) {
+      return
+    }
+
+    const title = conversationRenameInput.trim()
+
+    if (!title) {
+      setConversationRenameError('对话名称不能为空')
+      return
+    }
+
+    try {
+      if (pendingConversationRename.kind === 'regular') {
+        const conversation = {
+          ...pendingConversationRename.conversation,
+          title,
+        }
+        const savedConversation = window.__TAURI_INTERNALS__
+          ? await invoke<ConversationRecord>('save_regular_conversation', {
+              conversation: {
+                id: conversation.id,
+                title: conversation.title,
+                createdAt: conversation.createdAt,
+                updatedAt: conversation.updatedAt ?? conversation.createdAt,
+                pinned: conversation.pinned ?? false,
+                messages: conversation.messages,
+                path: conversation.path ?? '',
+              },
+            })
+          : conversation
+
+        setConversations((currentConversations) =>
+          currentConversations.map((currentConversation) =>
+            currentConversation.id === savedConversation.id
+              ? {
+                  ...savedConversation,
+                  active: currentConversation.active,
+                }
+              : currentConversation,
+          ),
+        )
+      } else {
+        const { projectId } = pendingConversationRename
+        const conversation = {
+          ...pendingConversationRename.conversation,
+          title,
+        }
+        const savedConversation = window.__TAURI_INTERNALS__
+          ? await invoke<ProjectConversationRecord>('save_project_conversation', {
+              projectId,
+              conversation: {
+                id: conversation.id,
+                title: conversation.title,
+                createdAt: conversation.createdAt,
+                updatedAt: conversation.updatedAt ?? conversation.createdAt,
+                pinned: conversation.pinned ?? false,
+                messages: conversation.messages,
+                path: conversation.path ?? '',
+              },
+            })
+          : conversation
+
+        setProjects((currentProjects) =>
+          currentProjects.map((project) =>
+            project.id === projectId
+              ? {
+                  ...project,
+                  conversations: project.conversations.map((currentConversation) =>
+                    currentConversation.id === savedConversation.id ? savedConversation : currentConversation,
+                  ),
+                }
+              : project,
+          ),
+        )
+      }
+
+      closeConversationRenameDialog()
+      showAppToast('对话已重命名')
+    } catch (error) {
+      setConversationRenameError(error instanceof Error ? error.message : String(error))
+    }
+  }, [closeConversationRenameDialog, conversationRenameInput, pendingConversationRename, showAppToast])
 
   const saveChatScrollPosition = useCallback((conversationId: string, scrollTop: number) => {
     if (!conversationId) {
@@ -8249,6 +10907,87 @@ function App() {
     })
   }, [])
 
+  const persistConversation = useCallback(async (conversation: ConversationRecord) => {
+    if (!window.__TAURI_INTERNALS__) {
+      return
+    }
+
+    try {
+      const savedConversation = await invoke<ConversationRecord>('save_regular_conversation', {
+        conversation: {
+          id: conversation.id,
+          title: conversation.title,
+          createdAt: conversation.createdAt,
+          updatedAt: conversation.updatedAt ?? conversation.createdAt,
+          pinned: conversation.pinned ?? false,
+          messages: conversation.messages,
+          path: conversation.path ?? '',
+        },
+      })
+
+      setConversations((currentConversations) =>
+        currentConversations.map((currentConversation) =>
+          currentConversation.id === savedConversation.id
+            ? {
+                ...savedConversation,
+                active: currentConversation.active,
+              }
+            : currentConversation,
+        ),
+      )
+    } catch (error) {
+      setChatError(error instanceof Error ? error.message : String(error))
+    }
+  }, [])
+
+  const persistProjectConversation = useCallback(
+    async (projectId: string, conversation: ProjectConversationRecord) => {
+      if (!window.__TAURI_INTERNALS__) {
+        return
+      }
+
+      try {
+        const savedConversation = await invoke<ProjectConversationRecord>('save_project_conversation', {
+          projectId,
+          conversation: {
+            id: conversation.id,
+            title: conversation.title,
+            createdAt: conversation.createdAt,
+            updatedAt: conversation.updatedAt ?? conversation.createdAt,
+            pinned: conversation.pinned ?? false,
+            messages: conversation.messages,
+            path: conversation.path ?? '',
+          },
+        })
+
+        setProjects((currentProjects) =>
+          currentProjects.map((project) => {
+            if (project.id !== projectId) {
+              return project
+            }
+
+            const hasConversation = project.conversations.some(
+              (currentConversation) => currentConversation.id === savedConversation.id,
+            )
+            const conversations = hasConversation
+              ? project.conversations.map((currentConversation) =>
+                  currentConversation.id === savedConversation.id ? savedConversation : currentConversation,
+                )
+              : [savedConversation, ...project.conversations]
+
+            return {
+              ...project,
+              conversations,
+            }
+          }),
+        )
+      } catch (error) {
+        setChatError(error instanceof Error ? error.message : String(error))
+      }
+    },
+    [],
+  )
+
   const sendMessage = useCallback(
     async (content: string) => {
       setActiveView('chat')
@@ -8258,34 +10997,112 @@ function App() {
       }
 
       const nextMessages: ChatMessage[] = [...messages, { role: 'user', content }]
-      const activeConversation = conversations.find((conversation) => conversation.active)
+      const isProjectChat = activeChatTarget.kind === 'project'
+      const activeConversation =
+        isProjectChat && activeChatTarget.conversationId
+          ? projects
+              .find((project) => project.id === activeChatTarget.projectId)
+              ?.conversations.find((conversation) => conversation.id === activeChatTarget.conversationId)
+          : conversations.find((conversation) => conversation.active)
       const currentConversationId = activeConversation?.id ?? `conversation-${Date.now()}`
+      const currentConversationTitle = activeConversation?.title ?? createConversationTitle(content)
+      const currentConversationCreatedAt = activeConversation?.createdAt ?? Date.now()
+      const currentConversationUpdatedAt = Date.now()
+      const currentConversationPinned = activeConversation?.pinned ?? false
+      const currentConversationPath = activeConversation?.path ?? ''
       activeConversationIdRef.current = currentConversationId
+      if (isProjectChat) {
+        setActiveChatTarget({
+          kind: 'project',
+          projectId: activeChatTarget.projectId,
+          conversationId: currentConversationId,
+        })
+      } else {
+        setActiveChatTarget({ kind: 'regular', conversationId: currentConversationId })
+      }
 
-      setConversations((currentConversations) => {
-        if (activeConversation) {
-          return currentConversations.map((conversation) =>
-            conversation.id === activeConversation.id
-              ? {
-                  ...conversation,
-                  messages: nextMessages,
-                }
-              : conversation,
-          )
-        }
+      if (isProjectChat) {
+        setProjects((currentProjects) =>
+          currentProjects.map((project) => {
+            if (project.id !== activeChatTarget.projectId) {
+              return project
+            }
 
-        return [
-          {
-            id: currentConversationId,
-            title: createConversationTitle(content),
-            active: true,
-            createdAt: Date.now(),
-            messages: nextMessages,
-          },
-          ...currentConversations,
-        ]
-      })
+            const nextConversation: ProjectConversationRecord = {
+              id: currentConversationId,
+              title: currentConversationTitle,
+              createdAt: currentConversationCreatedAt,
+              updatedAt: currentConversationUpdatedAt,
+              pinned: currentConversationPinned,
+              messages: nextMessages,
+              path: currentConversationPath,
+            }
+            const hasConversation = project.conversations.some(
+              (conversation) => conversation.id === currentConversationId,
+            )
+
+            return {
+              ...project,
+              conversations: hasConversation
+                ? project.conversations.map((conversation) =>
+                    conversation.id === currentConversationId ? nextConversation : conversation,
+                  )
+                : [nextConversation, ...project.conversations],
+            }
+          }),
+        )
+      } else {
+        setConversations((currentConversations) => {
+          if (activeConversation) {
+            return currentConversations.map((conversation) =>
+              conversation.id === activeConversation.id
+                ? {
+                    ...conversation,
+                    updatedAt: currentConversationUpdatedAt,
+                    messages: nextMessages,
+                  }
+                : conversation,
+            )
+          }
+
+          return [
+            {
+              id: currentConversationId,
+              title: currentConversationTitle,
+              active: true,
+              createdAt: currentConversationCreatedAt,
+              updatedAt: currentConversationUpdatedAt,
+              pinned: currentConversationPinned,
+              messages: nextMessages,
+              path: currentConversationPath,
+            },
+            ...currentConversations,
+          ]
+        })
+      }
       setMessages(nextMessages)
+      if (isProjectChat) {
+        void persistProjectConversation(activeChatTarget.projectId, {
+          id: currentConversationId,
+          title: currentConversationTitle,
+          createdAt: currentConversationCreatedAt,
+          updatedAt: currentConversationUpdatedAt,
+          pinned: currentConversationPinned,
+          messages: nextMessages,
+          path: currentConversationPath,
+        })
+      } else {
+        void persistConversation({
+          id: currentConversationId,
+          title: currentConversationTitle,
+          active: true,
+          createdAt: currentConversationCreatedAt,
+          updatedAt: currentConversationUpdatedAt,
+          pinned: currentConversationPinned,
+          messages: nextMessages,
+          path: currentConversationPath,
+        })
+      }
       setChatError(null)
       setPendingConversationIds((currentIds) =>
         currentIds.includes(currentConversationId) ? currentIds : [...currentIds, currentConversationId],
@@ -8315,16 +11132,69 @@ function App() {
         if (activeConversationIdRef.current === currentConversationId) {
           setMessages(replyMessages)
         }
-        setConversations((currentConversations) =>
-          currentConversations.map((conversation) =>
-            conversation.id === currentConversationId
-              ? {
-                  ...conversation,
-                  messages: replyMessages,
-                }
-              : conversation,
-          ),
-        )
+        if (isProjectChat) {
+          setProjects((currentProjects) =>
+            currentProjects.map((project) => {
+              if (project.id !== activeChatTarget.projectId) {
+                return project
+              }
+
+              const nextConversation: ProjectConversationRecord = {
+                id: currentConversationId,
+                title: currentConversationTitle,
+                createdAt: currentConversationCreatedAt,
+                updatedAt: currentConversationUpdatedAt,
+                pinned: currentConversationPinned,
+                messages: replyMessages,
+                path: currentConversationPath,
+              }
+              const hasConversation = project.conversations.some(
+                (conversation) => conversation.id === currentConversationId,
+              )
+
+              return {
+                ...project,
+                conversations: hasConversation
+                  ? project.conversations.map((conversation) =>
+                      conversation.id === currentConversationId ? nextConversation : conversation,
+                    )
+                  : [nextConversation, ...project.conversations],
+              }
+            }),
+          )
+          void persistProjectConversation(activeChatTarget.projectId, {
+            id: currentConversationId,
+            title: currentConversationTitle,
+            createdAt: currentConversationCreatedAt,
+            updatedAt: currentConversationUpdatedAt,
+            pinned: currentConversationPinned,
+            messages: replyMessages,
+            path: currentConversationPath,
+          })
+        } else {
+          setConversations((currentConversations) =>
+            currentConversations.map((conversation) =>
+              conversation.id === currentConversationId
+                ? {
+                    ...conversation,
+                    updatedAt: currentConversationUpdatedAt,
+                    pinned: currentConversationPinned,
+                    messages: replyMessages,
+                  }
+                : conversation,
+            ),
+          )
+          void persistConversation({
+            id: currentConversationId,
+            title: currentConversationTitle,
+            active: true,
+            createdAt: currentConversationCreatedAt,
+            updatedAt: currentConversationUpdatedAt,
+            pinned: currentConversationPinned,
+            messages: replyMessages,
+            path: currentConversationPath,
+          })
+        }
       }
 
       try {
@@ -8361,7 +11231,15 @@ function App() {
         )
       }
     },
-    [conversations, createConversationTitle, messages],
+    [
+      activeChatTarget,
+      conversations,
+      createConversationTitle,
+      messages,
+      persistConversation,
+      persistProjectConversation,
+      projects,
+    ],
   )
 
   if (!isAuthenticated) {
@@ -8371,11 +11249,18 @@ function App() {
   return (
     <div className={workspaceClassName}>
       <Sidebar
+        projects={projects}
         conversations={conversations}
         now={now}
         activeView={activeView}
         activeSettingsSection={activeSettingsSection}
         onNewChat={startNewChat}
+        onCreateBlankProject={openBlankProjectDialog}
+        onChooseExistingProjectFolder={chooseExistingProjectFolder}
+        onCreateProjectConversation={startProjectChat}
+        onOpenProjectFolder={openProjectFolder}
+        onRequestRenameProject={openProjectRenameDialog}
+        onRequestRemoveProject={requestRemoveProject}
         onSearch={openSearch}
         onOpenMessagePlatform={() => setActiveView('message-platform')}
         onOpenSkills={() => setActiveView('skills')}
@@ -8385,6 +11270,14 @@ function App() {
         onSettingsSectionChange={requestSettingsSectionChange}
         onBackFromSettings={backFromSettings}
         onSelectConversation={selectConversation}
+        onSelectProjectConversation={selectProjectConversation}
+        onToggleProjectPinned={toggleProjectPinned}
+        onToggleProjectConversationPinned={toggleProjectConversationPinned}
+        onRequestRenameProjectConversation={requestRenameProjectConversation}
+        onToggleConversationPinned={toggleConversationPinned}
+        onRequestRenameConversation={requestRenameConversation}
+        onRequestDeleteConversation={requestDeleteConversation}
+        onRequestDeleteProjectConversation={requestDeleteProjectConversation}
       />
       <GlobalTitleBar
         activeView={activeView}
@@ -8392,6 +11285,8 @@ function App() {
         activeConversationId={activeConversationId}
         activeConversationTitle={activeConversation?.title ?? ''}
         activeConversationMessages={messages}
+        activeConversation={activeConversation}
+        activeChatTarget={activeChatTarget}
         hasChat={Boolean(activeConversation && (messages.length > 0 || isActiveConversationSending || chatError))}
         isSkillsTitleDocked={isSkillsTitleDocked}
         activeSkillsSection={activeSkillsSection}
@@ -8403,7 +11298,10 @@ function App() {
         settingsTitlebar={settingsTitlebar}
         isChatRightPanelOpen={isChatRightPanelOpen}
         onPlatformTitleSwitchToggle={togglePlatformFromTitlebar}
-        onConversationTitleRename={renameActiveConversation}
+        onToggleConversationPinned={toggleConversationPinned}
+        onToggleProjectConversationPinned={toggleProjectConversationPinned}
+        onRequestRenameConversation={requestRenameConversation}
+        onRequestRenameProjectConversation={requestRenameProjectConversation}
         onConversationTitleToast={showAppToast}
         onToggleChatRightPanel={() => setIsChatRightPanelOpen((isOpen) => !isOpen)}
         onToggleSidebar={() => setIsSidebarCollapsed((isCollapsed) => !isCollapsed)}
@@ -8444,6 +11342,110 @@ function App() {
           onClose={closeSearch}
           onExitComplete={completeSearchClose}
           onSelectConversation={selectConversationFromSearch}
+        />
+      ) : null}
+      {isProjectNameDialogOpen ? (
+        <div className="skills-modal-overlay modal-fade-layer" onClick={closeProjectNameDialog}>
+          <section
+            className="skills-github-dialog modal-pop-surface"
+            aria-label="为项目命名"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="skills-github-heading">
+              <h2>{projectNameDialogMode?.kind === 'rename' ? '重命名项目' : '为项目命名'}</h2>
+              <button type="button" aria-label="关闭" onClick={closeProjectNameDialog}>
+                <FigmaIcon icon={modalXIcon} />
+              </button>
+            </header>
+            <div className="skills-github-content">
+              <input
+                value={projectNameInput}
+                autoFocus
+                placeholder="项目名称"
+                onChange={(event) => {
+                  setProjectNameInput(event.currentTarget.value)
+                  setProjectNameError(null)
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    void confirmProjectNameDialog()
+                  }
+                }}
+              />
+              {projectNameError ? <p className="project-name-dialog-error">{projectNameError}</p> : null}
+            </div>
+            <footer className="skills-github-actions">
+              <button type="button" onClick={closeProjectNameDialog}>
+                取消
+              </button>
+              <button type="button" onClick={() => void confirmProjectNameDialog()}>
+                确定
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+      {pendingConversationRename ? (
+        <div className="skills-modal-overlay modal-fade-layer" onClick={closeConversationRenameDialog}>
+          <section
+            className="skills-github-dialog modal-pop-surface"
+            aria-label="重命名对话"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="skills-github-heading">
+              <h2>重命名对话</h2>
+              <button type="button" aria-label="关闭" onClick={closeConversationRenameDialog}>
+                <FigmaIcon icon={modalXIcon} />
+              </button>
+            </header>
+            <div className="skills-github-content">
+              <input
+                value={conversationRenameInput}
+                autoFocus
+                placeholder="对话名称"
+                onChange={(event) => {
+                  setConversationRenameInput(event.currentTarget.value)
+                  setConversationRenameError(null)
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    void confirmRenameConversation()
+                  }
+                }}
+              />
+              {conversationRenameError ? <p className="project-name-dialog-error">{conversationRenameError}</p> : null}
+            </div>
+            <footer className="skills-github-actions">
+              <button type="button" onClick={closeConversationRenameDialog}>
+                取消
+              </button>
+              <button type="button" onClick={() => void confirmRenameConversation()}>
+                确定
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+      {pendingProjectRemove ? (
+        <DangerConfirmDialog
+          title={`移除${pendingProjectRemove.project.title}？`}
+          description="这将从Hz-Hermes中移除该项目，磁盘上的文件不会被删除。"
+          closeIcon={scheduledDeleteModalXIcon}
+          ariaLabel="移除项目"
+          onCancel={() => setPendingProjectRemove(null)}
+          onConfirm={() => void confirmRemoveProject()}
+        />
+      ) : null}
+      {pendingConversationDelete ? (
+        <DangerConfirmDialog
+          title="确认删除对话？"
+          description="对话删除后将不可恢复，请谨慎操作！"
+          closeIcon={scheduledDeleteModalXIcon}
+          ariaLabel="删除对话"
+          onCancel={() => setPendingConversationDelete(null)}
+          onConfirm={() => void confirmDeleteConversation()}
         />
       ) : null}
       <AppToast toast={appToast} onClose={closeAppToast} />

@@ -1110,6 +1110,7 @@ button {
 }
 
 .nav-item span,
+.nav-list-row span,
 .conversation-row span,
 .empty-nav-row,
 .nav-section h2 {
@@ -1134,56 +1135,365 @@ button {
   color: var(--color-brand);
 }
 
+.side-nav .nav-item.brand:hover {
+  --stroke-0: var(--color-brand);
+  background: #eaeaea;
+  color: var(--color-brand);
+}
+
+.side-nav .nav-item.brand:hover .figma-icon {
+  --stroke-0: var(--color-brand);
+}
+
 .nav-section {
   display: flex;
   flex-direction: column;
-  padding-top: 8px;
+  align-items: stretch;
 }
 
-.nav-section h2 {
-  width: calc(100% - 8px);
-  height: 36px;
-  margin: 0 4px 4px;
-  padding: 8px 12px;
-  color: var(--color-text-muted);
-  font-weight: 400;
-  border-radius: 8px;
-}
-
-.empty-nav-row {
-  width: calc(100% - 8px);
-  height: 36px;
-  margin: 0 4px 2px;
-  padding: 8px 12px;
-  color: var(--color-text-placeholder);
-  border-radius: 8px;
-  text-align: left;
-}
-
-.conversation-list {
+.nav-section-title-wrap {
+  width: 100%;
+  height: 46px;
+  flex: 0 0 46px;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  padding: 8px 4px 2px;
 }
 
-.conversation-row {
-  width: calc(100% - 8px);
+.nav-section-title-wrap h2 {
+  width: 100%;
+  height: 36px;
+  flex: 0 0 36px;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 8px 12px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.project-section-title,
+.conversation-section-title {
+  gap: 8px;
+}
+
+.nav-section-title-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-section-title-copy > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-section-toggle-icon {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  max-width: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-basis: 16px;
+  opacity: 0;
+  --stroke-0: #999999;
+}
+
+.nav-section-toggle-icon .figma-icon {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  max-width: 16px;
+  flex-basis: 16px;
+}
+
+.nav-section.collapsed .nav-section-toggle-icon,
+.nav-section-title-wrap h2:hover .nav-section-toggle-icon {
+  opacity: 1;
+}
+
+.nav-section-actions {
+  height: 24px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.nav-section-title-wrap h2:hover .nav-section-actions,
+.nav-section-title-wrap.has-open-menu .nav-section-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.project-subgroup-row:hover .project-subgroup-actions,
+.project-subgroup-row.has-open-menu .project-subgroup-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.nav-section-action {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.nav-section-action .figma-icon {
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  max-width: 14px;
+  flex-basis: 14px;
+  --fill-0: #999999;
+  --stroke-0: #999999;
+}
+
+.nav-section-action:hover,
+.nav-section-action:active,
+.nav-section-action.active {
+  --fill-0: #000000;
+  --stroke-0: #000000;
+  background: #eaeaea;
+}
+
+.nav-section-action:hover .figma-icon,
+.nav-section-action:active .figma-icon,
+.nav-section-action.active .figma-icon {
+  --fill-0: #000000;
+  --stroke-0: #000000;
+}
+
+.project-title-popover {
+  --composer-popover-min-width: 160px;
+  min-width: 160px;
+}
+
+.project-sort-popover {
+  z-index: 1001;
+}
+
+.project-title-popover .project-sort-trigger.selected .composer-popover-option-surface {
+  background: #f3f3f3;
+}
+
+.project-title-popover .project-sort-selected-option.selected .composer-popover-option-surface {
+  background: transparent;
+}
+
+.project-title-popover .project-sort-selected-option.selected:hover .composer-popover-option-surface {
+  background: #f9f9f9;
+}
+
+.project-title-popover .project-sort-selected-option.selected:active .composer-popover-option-surface {
+  background: #f3f3f3;
+}
+
+.project-title-popover .composer-popover-option .figma-icon {
+  --fill-0: #000000;
+  --stroke-0: #000000;
+}
+
+.nav-section-list {
+  width: 100%;
+  display: grid;
+  grid-template-rows: 1fr;
+  overflow: hidden;
+  opacity: 1;
+  transition:
+    grid-template-rows 220ms ease-out,
+    opacity 160ms ease-out;
+  will-change: grid-template-rows, opacity;
+}
+
+.nav-section-list.collapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.nav-section-list.expanded {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.nav-section-list-inner {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.project-subgroup-list {
+  width: 100%;
+  display: grid;
+  grid-template-rows: 1fr;
+  overflow: hidden;
+  opacity: 1;
+  transition:
+    grid-template-rows 220ms ease-out,
+    opacity 160ms ease-out;
+  will-change: grid-template-rows, opacity;
+}
+
+.project-subgroup-list.collapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.project-subgroup-list.expanded {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.project-subgroup-list-inner {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-section-list,
+  .project-subgroup-list {
+    transition: none;
+  }
+}
+
+.nav-empty-row {
+  width: 100%;
+  height: 40px;
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  color: #b3b3b3;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0;
+}
+
+.nav-list-row-shell {
+  width: 100%;
+  height: 40px;
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  padding: 2px 4px;
+}
+
+.nav-list-row,
+.empty-nav-row {
+  width: 100%;
   height: 36px;
   min-height: 36px;
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 0 4px 2px;
+  margin: 0;
   padding: 8px 12px;
-  color: var(--color-text-strong);
+  overflow: hidden;
+  color: var(--color-text-placeholder);
   border-radius: 8px;
-  cursor: pointer;
   text-align: left;
 }
 
-.conversation-row time {
-  flex: 0 0 auto;
-  max-width: 64px;
+.nav-list-row {
+  color: var(--color-text-strong);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.project-list-row .figma-icon {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  max-width: 16px;
+  flex-basis: 16px;
+  --stroke-0: #000000;
+}
+
+.project-list-row > span:not(.project-subgroup-actions):not(.chat-list-row-actions) {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-list-row > span:not(.chat-list-row-actions) {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-subgroup-row {
+  outline: 0;
+}
+
+.project-subgroup-actions {
+  min-width: auto;
+  overflow: visible;
+}
+
+.project-subgroup-row .nav-section-action .figma-icon {
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  max-width: 14px;
+  flex-basis: 14px;
+  --fill-0: #999999;
+  --stroke-0: #999999;
+}
+
+.project-subgroup-row .nav-section-action:hover .figma-icon,
+.project-subgroup-row .nav-section-action:active .figma-icon,
+.project-subgroup-row .nav-section-action.active .figma-icon {
+  --fill-0: #000000;
+  --stroke-0: #000000;
+}
+
+.project-list-row:not(.has-icon)::before {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  content: '';
+}
+
+.project-subgroup-empty-row {
+  color: #b3b3b3;
+  cursor: default;
+  pointer-events: none;
+}
+
+.nav-list-row time {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: none;
+  overflow: visible;
   color: var(--color-text-muted);
   font-family: var(--font-app);
   font-size: 12px;
@@ -1191,10 +1501,99 @@ button {
   line-height: 16px;
   letter-spacing: 0;
   text-align: right;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.conversation-row time {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: none;
+  overflow: visible;
+  color: var(--color-text-muted);
+  font-family: var(--font-app);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  letter-spacing: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.chat-list-row {
+  position: relative;
+}
+
+.chat-list-row:hover time,
+.chat-list-row.has-open-menu time {
+  opacity: 0;
+}
+
+.chat-list-row-actions {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  max-width: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chat-list-row:hover .chat-list-row-actions,
+.chat-list-row.has-open-menu .chat-list-row-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.chat-list-row-action {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.chat-list-row-action .figma-icon {
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  max-width: 14px;
+  flex-basis: 14px;
+  --fill-0: #999999;
+  --stroke-0: #999999;
+}
+
+.chat-list-row-action:hover,
+.chat-list-row-action:active,
+.chat-list-row-action.active {
+  background: #eaeaea;
+}
+
+.chat-list-row-action:hover .figma-icon,
+.chat-list-row-action:active .figma-icon,
+.chat-list-row-action.active .figma-icon {
+  --fill-0: #000000;
+  --stroke-0: #000000;
+}
+
+.project-title-popover .composer-popover-option.danger {
+  color: #000000;
+}
+
+.project-title-popover .composer-popover-option.danger .figma-icon {
+  --fill-0: #000000;
+  --stroke-0: #000000;
+}
+
+.nav-list-row:hover,
 .conversation-row:hover,
 .conversation-row.active {
   background: #eaeaea;
@@ -2121,6 +2520,7 @@ button {
 .chat-message.user {
   color: #000000;
   background: #f9f9f9;
+  border-radius: 12px;
   box-shadow: none;
 }
 
@@ -2167,7 +2567,7 @@ button {
   right: 0;
   left: 0;
   height: 1px;
-  background: #e5e5e5;
+  background: #f3f3f3;
   transform: translateY(-50%);
 }
 
@@ -2383,8 +2783,12 @@ button {
 .composer-popover {
   z-index: 1000;
   width: max-content;
+  min-width: var(--composer-popover-min-width, 160px);
   max-width: calc(100vw - 48px);
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   padding: 8px 0;
   background: #ffffff;
   border-radius: 12px;
@@ -2432,8 +2836,9 @@ button {
 }
 
 .composer-popover-option {
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: max-content;
+  box-sizing: border-box;
   height: 36px;
   min-height: 36px;
   display: flex;
@@ -2446,8 +2851,9 @@ button {
 }
 
 .composer-popover-option-surface {
-  width: max-content;
+  width: 100%;
   min-width: calc(var(--composer-popover-min-width, 160px) - 16px);
+  box-sizing: border-box;
   height: 36px;
   display: flex;
   align-items: center;
@@ -4063,8 +4469,9 @@ button {
 }
 
 .settings-api-key-menu > button {
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: max-content;
+  box-sizing: border-box;
   height: 52px;
   display: flex;
   align-items: center;
@@ -4075,8 +4482,9 @@ button {
 }
 
 .settings-api-key-menu-item-inner {
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: calc(320px - 16px);
+  box-sizing: border-box;
   flex: 0 0 auto;
   height: 52px;
   display: flex;
@@ -4097,7 +4505,7 @@ button {
 .settings-api-key-menu-item-inner > span {
   width: max-content;
   min-width: max-content;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
 }
@@ -4127,6 +4535,7 @@ button {
 .settings-api-key-menu .figma-icon {
   width: 16px;
   height: 16px;
+  margin-left: auto;
   min-width: 16px;
   max-width: 16px;
   flex-basis: 16px;
@@ -6987,7 +7396,7 @@ button {
 .skills-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 30;
+  z-index: 1200;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -7068,6 +7477,13 @@ button {
   font-size: 14px;
   font-weight: 400;
   line-height: 20px;
+}
+
+.project-name-dialog-error {
+  margin: 8px 0 0;
+  color: #c42b1c;
+  font-size: 12px;
+  line-height: 16px;
 }
 
 .skills-github-content input::placeholder {

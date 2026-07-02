@@ -44,6 +44,8 @@ import composerSnippetExplainIcon from './assets/composer-popover/snippet-explai
 import composerSnippetPlanIcon from './assets/composer-popover/snippet-plan.svg?raw'
 import composerSkillIcon from './assets/composer/composer-skill.svg?raw'
 import ellipsisIcon from './assets/figma-icons/ellipsis.svg?raw'
+import gripIcon from './assets/figma-icons/grip.svg?raw'
+import cornerDownRightIcon from './assets/figma-icons/corner-down-right.svg?raw'
 import layoutGridIcon from './assets/figma-icons/layout-grid.svg?raw'
 import libraryBigIcon from './assets/figma-icons/library-big.svg?raw'
 import messageCirclePlusIcon from './assets/figma-icons/message-circle-plus.svg?raw'
@@ -186,6 +188,35 @@ type AppView = 'chat' | 'message-platform' | 'skills' | 'scheduled-tasks' | 'fil
 type SettingsSection = 'model' | 'chat' | 'appearance' | 'memory' | 'gateway' | 'api-key' | 'archive' | 'about' | 'account'
 type AboutUpdateStatus = 'idle' | 'checking' | 'available' | 'downloading' | 'completed'
 type LegalAgreementType = 'user' | 'privacy'
+type ChatRightPanelLockedPane = 'left' | 'right'
+type ChatPanelState = {
+  rightPanelOpen?: boolean
+  bottomPanelOpen?: boolean
+  rightPanelWidth?: number
+  rightPanelLockedPane?: ChatRightPanelLockedPane
+  rightPanelLockedWidth?: number
+}
+type ChatRightPanelResizeState = {
+  width: number | null
+  lockedPane: ChatRightPanelLockedPane | null
+  lockedWidth: number | null
+}
+
+function getChatRightPanelWidthStyleValue(
+  width: number | null,
+  lockedPane: ChatRightPanelLockedPane | null,
+  lockedWidth: number | null,
+) {
+  if (lockedPane === 'left' && lockedWidth !== null) {
+    return `calc(100% - clamp(min(400px, 50%), ${lockedWidth}px, calc(100% - min(400px, 50%))))`
+  }
+
+  if (lockedPane === 'right' && lockedWidth !== null) {
+    return `clamp(min(400px, 50%), ${lockedWidth}px, calc(100% - min(400px, 50%)))`
+  }
+
+  return width !== null ? `${width}px` : undefined
+}
 
 const FLOATING_POPOVER_VIEWPORT_MARGIN = 24
 const FLOATING_POPOVER_GAP = 4
@@ -664,6 +695,12 @@ type ProjectConversationRecord = {
   pinned?: boolean
   messages: ChatMessage[]
   path?: string
+}
+
+type ChatQueueItem = {
+  id: string
+  content: string
+  createdAt: number
 }
 
 type ProjectRecord = {
@@ -8662,6 +8699,9 @@ function GlobalTitleBar({
   fileLibraryTitlebar,
   settingsTitlebar,
   isChatRightPanelOpen,
+  chatRightPanelWidth,
+  chatRightPanelLockedPane,
+  chatRightPanelLockedWidth,
   isChatBottomPanelOpen,
   onPlatformTitleSwitchToggle,
   onToggleConversationPinned,
@@ -8690,6 +8730,9 @@ function GlobalTitleBar({
   fileLibraryTitlebar: PlatformTitlebarState
   settingsTitlebar: SettingsTitlebarState
   isChatRightPanelOpen: boolean
+  chatRightPanelWidth: number | null
+  chatRightPanelLockedPane: ChatRightPanelLockedPane | null
+  chatRightPanelLockedWidth: number | null
   isChatBottomPanelOpen: boolean
   onPlatformTitleSwitchToggle: () => void
   onToggleConversationPinned: (conversation: ConversationRecord, pinned: boolean) => void
@@ -8755,9 +8798,17 @@ function GlobalTitleBar({
     shouldShowDivider ? 'has-divider' : '',
     shouldShowPanelTitlebar ? 'has-platform-titlebar' : '',
     activeView === 'chat' && shouldShowTitle ? 'chat-titlebar' : '',
+    shouldShowChatRightPanel && chatRightPanelLockedPane ? 'chat-panel-width-locked' : '',
   ]
     .filter(Boolean)
     .join(' ')
+  const globalTitlebarStyle = {
+    '--chat-right-panel-width': getChatRightPanelWidthStyleValue(
+      chatRightPanelWidth,
+      chatRightPanelLockedPane,
+      chatRightPanelLockedWidth,
+    ),
+  } as CSSProperties
   const titlebarClassName = [
     'global-titlebar-main',
     shouldShowTitle ? 'has-title' : '',
@@ -8977,6 +9028,7 @@ function GlobalTitleBar({
     <>
       <header
         className={globalTitlebarClassName}
+        style={globalTitlebarStyle}
         data-tauri-drag-region
         onPointerDown={startWindowDrag}
       >
@@ -9303,6 +9355,9 @@ function PromptComposer({
   hasChat,
   onSendMessage,
   isSending,
+  queuedMessages,
+  onDeleteQueuedMessage,
+  onPromoteQueuedMessage,
   onHeightChange,
   newChatFocusNonce,
   language,
@@ -9310,6 +9365,9 @@ function PromptComposer({
   hasChat: boolean
   onSendMessage: (message: string) => Promise<void>
   isSending: boolean
+  queuedMessages: ChatQueueItem[]
+  onDeleteQueuedMessage: (messageId: string) => void
+  onPromoteQueuedMessage: (messageId: string) => void
   onHeightChange?: (height: number) => void
   newChatFocusNonce: number
   language: '中文' | 'English'
@@ -9332,6 +9390,7 @@ function PromptComposer({
   const [composerHeight, setComposerHeight] = useState(COMPOSER_MIN_HEIGHT)
   const [activeToolbarAction, setActiveToolbarAction] = useState<ComposerToolbarAction | null>(null)
   const [isAddSnippetOpen, setIsAddSnippetOpen] = useState(false)
+  const [isQueuePanelCollapsed, setIsQueuePanelCollapsed] = useState(false)
   const [permissionMode, setPermissionMode] = useState<ComposerPermissionMode>('default')
   const [, setSelectedComposerSkill] = useState<string | null>(null)
   const [, setSelectedComposerEmployee] = useState<string | null>(null)
@@ -9499,7 +9558,7 @@ function PromptComposer({
 
       const message = prompt.trim()
 
-      if (!message || isSending) {
+      if (!message) {
         return
       }
 
@@ -9507,7 +9566,7 @@ function PromptComposer({
       await onSendMessage(message)
       requestAnimationFrame(syncComposerHeight)
     },
-    [isSending, onSendMessage, prompt, syncComposerHeight],
+    [onSendMessage, prompt, syncComposerHeight],
   )
 
   const submitOnEnter = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -9586,9 +9645,80 @@ function PromptComposer({
     '--composer-height': `${composerHeight}px`,
   } as CSSProperties
   const portalRoot = typeof document === 'undefined' ? null : document.body
+  const hasQueuedMessages = queuedMessages.length > 0
+  const visibleQueuedMessages = isQueuePanelCollapsed ? [] : queuedMessages.slice(0, 2)
 
   return (
     <div className={`composer-stage${hasChat ? ' has-chat' : ''}`} style={composerStyle}>
+      {hasChat && hasQueuedMessages ? (
+        <section className={`chat-queue-panel${isQueuePanelCollapsed ? ' collapsed' : ''}`} aria-label="发送队列">
+          <header className="chat-queue-titlebar">
+            <div className="chat-queue-title">
+              <span>发送队列</span>
+              <span className="chat-queue-count">{queuedMessages.length}</span>
+            </div>
+            <button
+              className="chat-queue-collapse"
+              type="button"
+              aria-label={isQueuePanelCollapsed ? '展开发送队列' : '收起发送队列'}
+              aria-expanded={!isQueuePanelCollapsed}
+              onClick={() => setIsQueuePanelCollapsed((isCollapsed) => !isCollapsed)}
+            >
+              <FigmaIcon icon={chevronDownIcon} />
+            </button>
+          </header>
+          {!isQueuePanelCollapsed ? (
+            <div className="chat-queue-list" role="list">
+              {visibleQueuedMessages.map((item) => (
+                <div className="chat-queue-row-shell" role="listitem" key={item.id}>
+                  <div className="chat-queue-row">
+                    <div className="chat-queue-text">
+                      <span className="chat-queue-grip" aria-hidden="true">
+                        <FigmaIcon icon={gripIcon} />
+                      </span>
+                      <span className="chat-queue-message" title={item.content}>{item.content}</span>
+                    </div>
+                    <div className="chat-queue-actions">
+                      <button
+                        className="chat-queue-guide"
+                        type="button"
+                        aria-label={`将 ${item.content} 提前`}
+                        onClick={() => onPromoteQueuedMessage(item.id)}
+                      >
+                        <FigmaIcon icon={cornerDownRightIcon} />
+                        <span>引导</span>
+                      </button>
+                      <button
+                        className="chat-queue-icon-button"
+                        type="button"
+                        aria-label={`删除 ${item.content}`}
+                        onClick={() => onDeleteQueuedMessage(item.id)}
+                      >
+                        <FigmaIcon icon={projectChatMenuTrashIcon} />
+                      </button>
+                      <button
+                        className="chat-queue-icon-button"
+                        type="button"
+                        aria-label={`编辑 ${item.content}`}
+                        onClick={() => {
+                          setPrompt(item.content)
+                          onDeleteQueuedMessage(item.id)
+                          requestAnimationFrame(() => {
+                            textareaRef.current?.focus()
+                            syncComposerHeight()
+                          })
+                        }}
+                      >
+                        <FigmaIcon icon={projectChatMenuSquarePenIcon} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
       <form
         ref={composerRef}
         className="composer"
@@ -9926,11 +10056,11 @@ function PromptComposer({
           </div>
           <IconButton label="语音输入" icon={micIcon} />
           <IconButton
-            label={isSending ? '发送中' : '发送'}
+            label={isSending ? '加入队列' : '发送'}
             icon={arrowUpIcon}
             variant="send"
             type="submit"
-            disabled={isSending || !prompt.trim()}
+            disabled={!prompt.trim()}
           />
         </div>
       </div>
@@ -10257,16 +10387,16 @@ function ChatRightPanel({ isOpen }: { isOpen: boolean }) {
 function ChatBottomPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const minPanelHeight = 160
   const defaultPanelHeight = 226
-  const [tabs, setTabs] = useState(() => [
-    {
-      id: 'terminal-1',
-      title: 'Token官网',
-      terminalValue: 'leo@huizhi001 Token官网 % ',
-    },
-  ])
-  const [activeTabId, setActiveTabId] = useState('terminal-1')
+  const createDefaultBottomPanelTab = useCallback(() => ({
+    id: `terminal-${Date.now()}`,
+    title: 'Token官网',
+    terminalValue: 'leo@huizhi001 Token官网 % ',
+  }), [])
+  const [tabs, setTabs] = useState(() => [createDefaultBottomPanelTab()])
+  const [activeTabId, setActiveTabId] = useState('')
   const tabItemRefs = useRef(new Map<string, HTMLDivElement>())
   const resizeStartRef = useRef<{ pointerY: number; height: number } | null>(null)
+  const wasOpenRef = useRef(isOpen)
   const [tabItemWidths, setTabItemWidths] = useState<Record<string, number>>({})
   const [panelHeight, setPanelHeight] = useState(defaultPanelHeight)
 
@@ -10286,9 +10416,10 @@ function ChatBottomPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
   const closeBottomPanelTab = useCallback(
     (tabId: string) => {
       setTabs((currentTabs) => {
-        if (currentTabs.length <= 1) {
+        if (currentTabs.length === 1 && currentTabs[0].id === tabId) {
+          setActiveTabId('')
           onClose()
-          return currentTabs
+          return []
         }
 
         const closedTabIndex = currentTabs.findIndex((tab) => tab.id === tabId)
@@ -10296,7 +10427,7 @@ function ChatBottomPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
 
         if (tabId === activeTabId) {
           const nextActiveTab = nextTabs[Math.max(0, Math.min(closedTabIndex, nextTabs.length - 1))]
-          setActiveTabId(nextActiveTab.id)
+          setActiveTabId(nextActiveTab?.id ?? '')
         }
 
         return nextTabs
@@ -10304,6 +10435,27 @@ function ChatBottomPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     },
     [activeTabId, onClose],
   )
+
+  useEffect(() => {
+    const didOpen = isOpen && !wasOpenRef.current
+    wasOpenRef.current = isOpen
+
+    if (!didOpen || tabs.length > 0) {
+      return
+    }
+
+    const nextTab = createDefaultBottomPanelTab()
+    setTabs([nextTab])
+    setActiveTabId(nextTab.id)
+  }, [createDefaultBottomPanelTab, isOpen, tabs.length])
+
+  useEffect(() => {
+    if (tabs.length === 0 || tabs.some((tab) => tab.id === activeTabId)) {
+      return
+    }
+
+    setActiveTabId(tabs[0].id)
+  }, [activeTabId, tabs])
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0]
   const updateActiveTerminalValue = useCallback(
@@ -10536,13 +10688,15 @@ function ChatBottomPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
         </div>
       </div>
       <div className="chat-bottom-panel-body">
-        <textarea
-          className="chat-bottom-panel-terminal"
-          aria-label={`${activeTab.title} 终端输入`}
-          spellCheck={false}
-          value={activeTab.terminalValue}
-          onChange={(event) => updateActiveTerminalValue(event.target.value)}
-        />
+        {activeTab ? (
+          <textarea
+            className="chat-bottom-panel-terminal"
+            aria-label={`${activeTab.title} 终端输入`}
+            spellCheck={false}
+            value={activeTab.terminalValue}
+            onChange={(event) => updateActiveTerminalValue(event.target.value)}
+          />
+        ) : null}
       </div>
     </section>
   )
@@ -10572,10 +10726,17 @@ function Content({
   chatScrollTop,
   onChatScrollPositionChange,
   onSendMessage,
+  queuedMessages,
+  onDeleteQueuedMessage,
+  onPromoteQueuedMessage,
   isChatRightPanelOpen,
+  chatRightPanelWidth,
+  chatRightPanelLockedPane,
+  chatRightPanelLockedWidth,
+  onChatRightPanelResizeChange,
   newChatFocusNonce,
   isChatBottomPanelOpen,
-  onToggleChatBottomPanel,
+  onCloseChatBottomPanel,
 }: {
   activeView: AppView
   activeSettingsSection: SettingsSection
@@ -10600,13 +10761,124 @@ function Content({
   chatScrollTop: number
   onChatScrollPositionChange: (conversationId: string, scrollTop: number) => void
   onSendMessage: (message: string) => Promise<void>
+  queuedMessages: ChatQueueItem[]
+  onDeleteQueuedMessage: (messageId: string) => void
+  onPromoteQueuedMessage: (messageId: string) => void
   isChatRightPanelOpen: boolean
+  chatRightPanelWidth: number | null
+  chatRightPanelLockedPane: ChatRightPanelLockedPane | null
+  chatRightPanelLockedWidth: number | null
+  onChatRightPanelResizeChange: (state: ChatRightPanelResizeState) => void
   newChatFocusNonce: number
   isChatBottomPanelOpen: boolean
-  onToggleChatBottomPanel: () => void
+  onCloseChatBottomPanel: () => void
 }) {
   const hasChat = messages.length > 0 || isSending || error
   const [chatComposerHeight, setChatComposerHeight] = useState(COMPOSER_MIN_HEIGHT)
+  const chatWorkbenchMainRef = useRef<HTMLDivElement | null>(null)
+  const chatRightPanelResizeRef = useRef<{ pointerX: number; width: number } | null>(null)
+  const chatRightPanelStyle = {
+    '--chat-right-panel-width': getChatRightPanelWidthStyleValue(
+      chatRightPanelWidth,
+      chatRightPanelLockedPane,
+      chatRightPanelLockedWidth,
+    ),
+  } as CSSProperties
+
+  const resizeChatRightPanel = useCallback(
+    (pointerX: number) => {
+      const resizeStart = chatRightPanelResizeRef.current
+      const container = chatWorkbenchMainRef.current
+
+      if (!resizeStart || !container) {
+        return
+      }
+
+      const totalWidth = container.getBoundingClientRect().width
+      const pointerDelta = resizeStart.pointerX - pointerX
+
+      if (Math.abs(pointerDelta) < 1) {
+        return
+      }
+
+      const minPaneWidth = Math.min(400, totalWidth / 2)
+      const maxRightPanelWidth = Math.max(0, totalWidth - minPaneWidth)
+      const minRightPanelWidth = minPaneWidth
+      const nextWidth = resizeStart.width + pointerDelta
+      const clampedWidth = Math.max(
+        minRightPanelWidth,
+        Math.min(maxRightPanelWidth, nextWidth),
+      )
+      const leftPanelWidth = totalWidth - clampedWidth
+      const hasSmallerPane = Math.abs(leftPanelWidth - clampedWidth) > 1
+      const lockedPane = hasSmallerPane
+        ? (leftPanelWidth < clampedWidth ? 'left' : 'right')
+        : null
+      const lockedWidth = lockedPane === 'left'
+        ? leftPanelWidth
+        : lockedPane === 'right'
+          ? clampedWidth
+          : null
+
+      onChatRightPanelResizeChange({
+        width: lockedPane === null ? null : Math.round(clampedWidth),
+        lockedPane,
+        lockedWidth: lockedWidth === null ? null : Math.round(lockedWidth),
+      })
+    },
+    [onChatRightPanelResizeChange],
+  )
+
+  const stopChatRightPanelResize = useCallback(() => {
+    chatRightPanelResizeRef.current = null
+    document.body.classList.remove('resizing-chat-right-panel')
+  }, [])
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      resizeChatRightPanel(event.clientX)
+    }
+
+    const handlePointerEnd = () => {
+      stopChatRightPanelResize()
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerEnd)
+    window.addEventListener('pointercancel', handlePointerEnd)
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerEnd)
+      window.removeEventListener('pointercancel', handlePointerEnd)
+      document.body.classList.remove('resizing-chat-right-panel')
+    }
+  }, [resizeChatRightPanel, stopChatRightPanelResize])
+
+  const startChatRightPanelResize = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const container = chatWorkbenchMainRef.current
+
+      if (event.button !== 0 || !container) {
+        return
+      }
+
+      event.preventDefault()
+      const totalWidth = container.getBoundingClientRect().width
+      const rightPanel = container.querySelector<HTMLElement>('.chat-right-panel')
+      const renderedRightPanelWidth = rightPanel?.getBoundingClientRect().width
+
+      chatRightPanelResizeRef.current = {
+        pointerX: event.clientX,
+        width: renderedRightPanelWidth && renderedRightPanelWidth > 0
+          ? renderedRightPanelWidth
+          : totalWidth / 2,
+      }
+      document.body.classList.add('resizing-chat-right-panel')
+      event.currentTarget.setPointerCapture(event.pointerId)
+    },
+    [],
+  )
 
   if (activeView === 'message-platform') {
     return (
@@ -10671,10 +10943,11 @@ function Content({
     <main
       className={`content-panel content-panel-chat${isChatRightPanelOpen ? ' has-right-panel' : ''}${
         isChatBottomPanelOpen ? ' has-bottom-panel' : ''
+      }${isChatRightPanelOpen && chatRightPanelLockedPane ? ' chat-panel-width-locked' : ''
       }`}
     >
       <div className="chat-workbench">
-        <div className="chat-workbench-main">
+        <div className="chat-workbench-main" ref={chatWorkbenchMainRef} style={chatRightPanelStyle}>
           <div className={`chat-primary-pane${isChatRightPanelOpen ? ' panel-open' : ''}`}>
             <section
               className={`welcome-panel ${hasChat ? 'has-chat' : ''}`}
@@ -10696,15 +10969,29 @@ function Content({
                 hasChat={Boolean(hasChat)}
                 onSendMessage={onSendMessage}
                 isSending={isSending}
+                queuedMessages={queuedMessages}
+                onDeleteQueuedMessage={onDeleteQueuedMessage}
+                onPromoteQueuedMessage={onPromoteQueuedMessage}
                 onHeightChange={setChatComposerHeight}
                 newChatFocusNonce={newChatFocusNonce}
                 language={language}
               />
             </section>
           </div>
+          {isChatRightPanelOpen ? (
+            <div
+              className="chat-right-panel-resize-handle"
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="调整右侧面板宽度"
+              onPointerDown={startChatRightPanelResize}
+              onPointerUp={stopChatRightPanelResize}
+              onPointerCancel={stopChatRightPanelResize}
+            />
+          ) : null}
           <ChatRightPanel isOpen={isChatRightPanelOpen} />
         </div>
-        <ChatBottomPanel isOpen={isChatBottomPanelOpen} onClose={onToggleChatBottomPanel} />
+        <ChatBottomPanel isOpen={isChatBottomPanelOpen} onClose={onCloseChatBottomPanel} />
       </div>
     </main>
   )
@@ -10768,9 +11055,8 @@ function App() {
   })
   const [language, setLanguage] = useState<'中文' | 'English'>('中文')
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
-  const [isChatRightPanelOpen, setIsChatRightPanelOpen] = useState(false)
+  const [suppressChatPanelTransition, setSuppressChatPanelTransition] = useState(false)
   const [newChatFocusNonce, setNewChatFocusNonce] = useState(0)
-  const [isChatBottomPanelOpen, setIsChatBottomPanelOpen] = useState(false)
   const [activeView, setActiveView] = useState<AppView>('chat')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [projects, setProjects] = useState<ProjectRecord[]>([])
@@ -10780,6 +11066,8 @@ function App() {
     conversationId: null,
   })
   const [pendingConversationIds, setPendingConversationIds] = useState<string[]>([])
+  const [chatQueues, setChatQueues] = useState<Record<string, ChatQueueItem[]>>({})
+  const [chatPanelStates, setChatPanelStates] = useState<Record<string, ChatPanelState>>({})
   const [chatScrollPositions, setChatScrollPositions] = useState<Record<string, number>>({})
   const [now, setNow] = useState(() => Date.now())
   const [chatError, setChatError] = useState<string | null>(null)
@@ -10826,16 +11114,20 @@ function App() {
     { type: 'section'; section: SettingsSection } | { type: 'back' } | null
   >(null)
   const activeConversationIdRef = useRef<string | null>(null)
+  const conversationsRef = useRef(conversations)
+  const projectsRef = useRef(projects)
+  const messagesRef = useRef(messages)
+  const activeChatTargetRef = useRef(activeChatTarget)
+  const chatQueuesRef = useRef(chatQueues)
+  const pendingConversationIdsRef = useRef(pendingConversationIds)
+  const suppressChatPanelTransitionFrameRef = useRef<number | null>(null)
+  conversationsRef.current = conversations
+  projectsRef.current = projects
+  messagesRef.current = messages
+  activeChatTargetRef.current = activeChatTarget
+  chatQueuesRef.current = chatQueues
+  pendingConversationIdsRef.current = pendingConversationIds
   const isWindowFullscreen = useWindowFullscreen()
-  const workspaceClassName = [
-    'workspace',
-    isSidebarCollapsed ? 'sidebar-collapsed' : '',
-    isWindowFullscreen ? 'window-fullscreen' : '',
-    activeView === 'chat' && isChatRightPanelOpen ? 'chat-right-panel-open' : '',
-    activeView === 'chat' && isChatBottomPanelOpen ? 'chat-bottom-panel-open' : '',
-  ]
-    .filter(Boolean)
-    .join(' ')
   const activeRegularConversation = conversations.find((conversation) => conversation.active)
   const activeProject = activeChatTarget.kind === 'project'
     ? projects.find((project) => project.id === activeChatTarget.projectId)
@@ -10852,8 +11144,129 @@ function App() {
   const activeChatScrollTop = activeConversationId
     ? (chatScrollPositions[activeConversationId] ?? 0)
     : 0
+  const activeQueuedMessages = activeConversationId
+    ? (chatQueues[activeConversationId] ?? [])
+    : []
+  const activeChatPanelKey = activeConversationId || (
+    activeChatTarget.kind === 'project'
+      ? `draft:project:${activeChatTarget.projectId}`
+      : 'draft:regular'
+  )
+  const activeChatPanelState = chatPanelStates[activeChatPanelKey]
+  const isChatRightPanelOpen = Boolean(activeChatPanelState?.rightPanelOpen)
+  const isChatBottomPanelOpen = Boolean(activeChatPanelState?.bottomPanelOpen)
+  const activeChatRightPanelWidth = activeChatPanelState?.rightPanelWidth ?? null
+  const activeChatRightPanelLockedPane = activeChatPanelState?.rightPanelLockedPane ?? null
+  const activeChatRightPanelLockedWidth = activeChatPanelState?.rightPanelLockedWidth ?? null
+  const toggleActiveChatRightPanel = useCallback(() => {
+    if (!activeChatPanelKey) {
+      return
+    }
+
+    setChatPanelStates((currentStates) => {
+      const currentState = currentStates[activeChatPanelKey] ?? {}
+
+      return {
+        ...currentStates,
+        [activeChatPanelKey]: {
+          ...currentState,
+          rightPanelOpen: !currentState.rightPanelOpen,
+        },
+      }
+    })
+  }, [activeChatPanelKey])
+  const toggleActiveChatBottomPanel = useCallback(() => {
+    if (!activeChatPanelKey) {
+      return
+    }
+
+    setChatPanelStates((currentStates) => {
+      const currentState = currentStates[activeChatPanelKey] ?? {}
+
+      return {
+        ...currentStates,
+        [activeChatPanelKey]: {
+          ...currentState,
+          bottomPanelOpen: !currentState.bottomPanelOpen,
+        },
+      }
+    })
+  }, [activeChatPanelKey])
+  const closeActiveChatBottomPanel = useCallback(() => {
+    if (!activeChatPanelKey) {
+      return
+    }
+
+    setChatPanelStates((currentStates) => {
+      const currentState = currentStates[activeChatPanelKey] ?? {}
+
+      if (!currentState.bottomPanelOpen) {
+        return currentStates
+      }
+
+      return {
+        ...currentStates,
+        [activeChatPanelKey]: {
+          ...currentState,
+          bottomPanelOpen: false,
+        },
+      }
+    })
+  }, [activeChatPanelKey])
+  const updateActiveChatRightPanelResize = useCallback(
+    ({ width, lockedPane, lockedWidth }: ChatRightPanelResizeState) => {
+      if (!activeChatPanelKey) {
+        return
+      }
+
+      setChatPanelStates((currentStates) => {
+        const currentState = currentStates[activeChatPanelKey] ?? {}
+
+        return {
+          ...currentStates,
+          [activeChatPanelKey]: {
+            ...currentState,
+            rightPanelWidth: width ?? undefined,
+            rightPanelLockedPane: lockedPane ?? undefined,
+            rightPanelLockedWidth: lockedWidth ?? undefined,
+          },
+        }
+      })
+    },
+    [activeChatPanelKey],
+  )
+  const workspaceClassName = [
+    'workspace',
+    isSidebarCollapsed ? 'sidebar-collapsed' : '',
+    isWindowFullscreen ? 'window-fullscreen' : '',
+    suppressChatPanelTransition ? 'suppress-chat-panel-transition' : '',
+    activeView === 'chat' && isChatRightPanelOpen ? 'chat-right-panel-open' : '',
+    activeView === 'chat' && isChatBottomPanelOpen ? 'chat-bottom-panel-open' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   useGlobalEnglishTranslation(language === 'English')
+
+  const suppressChatPanelTransitionForSwitch = useCallback(() => {
+    if (suppressChatPanelTransitionFrameRef.current !== null) {
+      window.cancelAnimationFrame(suppressChatPanelTransitionFrameRef.current)
+    }
+
+    setSuppressChatPanelTransition(true)
+    suppressChatPanelTransitionFrameRef.current = window.requestAnimationFrame(() => {
+      suppressChatPanelTransitionFrameRef.current = window.requestAnimationFrame(() => {
+        suppressChatPanelTransitionFrameRef.current = null
+        setSuppressChatPanelTransition(false)
+      })
+    })
+  }, [])
+
+  useEffect(() => () => {
+    if (suppressChatPanelTransitionFrameRef.current !== null) {
+      window.cancelAnimationFrame(suppressChatPanelTransitionFrameRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     void configureAppWindowForAuthState(isAuthenticated)
@@ -11065,34 +11478,46 @@ function App() {
   }, [])
 
   const startNewChat = useCallback(() => {
+    suppressChatPanelTransitionForSwitch()
     setActiveView('chat')
     setNewChatFocusNonce((nonce) => nonce + 1)
     activeConversationIdRef.current = null
     setActiveChatTarget({ kind: 'regular', conversationId: null })
     setMessages([])
     setChatError(null)
+    setChatPanelStates((currentStates) => {
+      const nextStates = { ...currentStates }
+      delete nextStates['draft:regular']
+      return nextStates
+    })
     setConversations((currentConversations) =>
       currentConversations.map((conversation) => ({
         ...conversation,
         active: false,
       })),
     )
-  }, [])
+  }, [suppressChatPanelTransitionForSwitch])
 
   const startProjectChat = useCallback((projectId: string) => {
+    suppressChatPanelTransitionForSwitch()
     setActiveView('chat')
     setNewChatFocusNonce((nonce) => nonce + 1)
     activeConversationIdRef.current = null
     setActiveChatTarget({ kind: 'project', projectId, conversationId: null })
     setMessages([])
     setChatError(null)
+    setChatPanelStates((currentStates) => {
+      const nextStates = { ...currentStates }
+      delete nextStates[`draft:project:${projectId}`]
+      return nextStates
+    })
     setConversations((currentConversations) =>
       currentConversations.map((conversation) => ({
         ...conversation,
         active: false,
       })),
     )
-  }, [])
+  }, [suppressChatPanelTransitionForSwitch])
 
   const openSettings = useCallback(() => {
     setSettingsReturnView((activeView === 'settings' ? settingsReturnView : activeView) || 'chat')
@@ -11190,6 +11615,7 @@ function App() {
         return
       }
 
+      suppressChatPanelTransitionForSwitch()
       setActiveView('chat')
       setMessages(selectedConversation.messages)
       activeConversationIdRef.current = selectedConversation.id
@@ -11202,7 +11628,7 @@ function App() {
         })),
       )
     },
-    [conversations],
+    [conversations, suppressChatPanelTransitionForSwitch],
   )
 
   const selectProjectConversation = useCallback(
@@ -11216,6 +11642,7 @@ function App() {
         return
       }
 
+      suppressChatPanelTransitionForSwitch()
       setActiveView('chat')
       setMessages(selectedConversation.messages)
       activeConversationIdRef.current = selectedConversation.id
@@ -11228,7 +11655,7 @@ function App() {
         })),
       )
     },
-    [projects],
+    [projects, suppressChatPanelTransitionForSwitch],
   )
 
   const selectConversationFromSearch = useCallback(
@@ -11698,8 +12125,93 @@ function App() {
     [],
   )
 
+  const updateChatQueues = useCallback(
+    (updater: (currentQueues: Record<string, ChatQueueItem[]>) => Record<string, ChatQueueItem[]>) => {
+      setChatQueues((currentQueues) => {
+        const nextQueues = updater(currentQueues)
+        chatQueuesRef.current = nextQueues
+        return nextQueues
+      })
+    },
+    [],
+  )
+
+  const removeQueuedMessage = useCallback(
+    (conversationId: string, messageId: string) => {
+      updateChatQueues((currentQueues) => {
+        const nextQueue = (currentQueues[conversationId] ?? []).filter((item) => item.id !== messageId)
+        const nextQueues = { ...currentQueues }
+
+        if (nextQueue.length === 0) {
+          delete nextQueues[conversationId]
+        } else {
+          nextQueues[conversationId] = nextQueue
+        }
+
+        return nextQueues
+      })
+    },
+    [updateChatQueues],
+  )
+
+  const deleteActiveQueuedMessage = useCallback(
+    (messageId: string) => {
+      if (!activeConversationId) {
+        return
+      }
+
+      removeQueuedMessage(activeConversationId, messageId)
+    },
+    [activeConversationId, removeQueuedMessage],
+  )
+
+  const promoteActiveQueuedMessage = useCallback(
+    (messageId: string) => {
+      if (!activeConversationId) {
+        return
+      }
+
+      updateChatQueues((currentQueues) => {
+        const queue = currentQueues[activeConversationId] ?? []
+        const item = queue.find((queuedItem) => queuedItem.id === messageId)
+
+        if (!item) {
+          return currentQueues
+        }
+
+        const nextQueue = [item, ...queue.filter((queuedItem) => queuedItem.id !== messageId)]
+
+        return {
+          ...currentQueues,
+          [activeConversationId]: nextQueue,
+        }
+      })
+    },
+    [activeConversationId, updateChatQueues],
+  )
+
   const sendMessage = useCallback(
     async (content: string) => {
+      const queueConversationId = activeConversationIdRef.current || activeConversationId
+      const isCurrentConversationPending = queueConversationId
+        ? pendingConversationIdsRef.current.includes(queueConversationId)
+        : false
+
+      if (queueConversationId && isCurrentConversationPending) {
+        updateChatQueues((currentQueues) => ({
+          ...currentQueues,
+          [queueConversationId]: [
+            ...(currentQueues[queueConversationId] ?? []),
+            {
+              id: `queued-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+              content,
+              createdAt: Date.now(),
+            },
+          ],
+        }))
+        return
+      }
+
       setActiveView('chat')
       if (!window.__TAURI_INTERNALS__) {
         setChatError('请在桌面端运行，本地浏览器预览无法调用 Tauri 后端。')
@@ -11720,6 +12232,11 @@ function App() {
       const currentConversationUpdatedAt = Date.now()
       const currentConversationPinned = activeConversation?.pinned ?? false
       const currentConversationPath = activeConversation?.path ?? ''
+      const draftPanelKey = activeConversation
+        ? null
+        : isProjectChat
+          ? `draft:project:${activeChatTarget.projectId}`
+          : 'draft:regular'
       activeConversationIdRef.current = currentConversationId
       if (isProjectChat) {
         setActiveChatTarget({
@@ -11729,6 +12246,19 @@ function App() {
         })
       } else {
         setActiveChatTarget({ kind: 'regular', conversationId: currentConversationId })
+      }
+      if (draftPanelKey) {
+        setChatPanelStates((currentStates) => {
+          const draftState = currentStates[draftPanelKey]
+
+          if (!draftState) {
+            return currentStates
+          }
+
+          const nextStates = { ...currentStates, [currentConversationId]: draftState }
+          delete nextStates[draftPanelKey]
+          return nextStates
+        })
       }
 
       if (isProjectChat) {
@@ -11936,21 +12466,48 @@ function App() {
         if (elapsedTimer !== undefined) {
           window.clearInterval(elapsedTimer)
         }
-        setPendingConversationIds((currentIds) =>
-          currentIds.filter((conversationId) => conversationId !== currentConversationId),
-        )
+        setPendingConversationIds((currentIds) => {
+          const nextIds = currentIds.filter((conversationId) => conversationId !== currentConversationId)
+          pendingConversationIdsRef.current = nextIds
+          return nextIds
+        })
+
+        const nextQueuedMessage = chatQueuesRef.current[currentConversationId]?.[0]
+
+        if (nextQueuedMessage && activeConversationIdRef.current === currentConversationId) {
+          removeQueuedMessage(currentConversationId, nextQueuedMessage.id)
+          void sendMessage(nextQueuedMessage.content)
+        }
       }
     },
     [
       activeChatTarget,
+      activeConversationId,
       conversations,
       createConversationTitle,
       messages,
       persistConversation,
       persistProjectConversation,
       projects,
+      removeQueuedMessage,
+      updateChatQueues,
     ],
   )
+
+  useEffect(() => {
+    if (!activeConversationId || pendingConversationIdsRef.current.includes(activeConversationId)) {
+      return
+    }
+
+    const nextQueuedMessage = chatQueuesRef.current[activeConversationId]?.[0]
+
+    if (!nextQueuedMessage) {
+      return
+    }
+
+    removeQueuedMessage(activeConversationId, nextQueuedMessage.id)
+    void sendMessage(nextQueuedMessage.content)
+  }, [activeConversationId, activeQueuedMessages.length, removeQueuedMessage, sendMessage])
 
   if (!isAuthenticated) {
     return <LoginShell onLogin={login} />
@@ -12008,6 +12565,9 @@ function App() {
         fileLibraryTitlebar={fileLibraryTitlebar}
         settingsTitlebar={settingsTitlebar}
         isChatRightPanelOpen={isChatRightPanelOpen}
+        chatRightPanelWidth={activeChatRightPanelWidth}
+        chatRightPanelLockedPane={activeChatRightPanelLockedPane}
+        chatRightPanelLockedWidth={activeChatRightPanelLockedWidth}
         isChatBottomPanelOpen={isChatBottomPanelOpen}
         onPlatformTitleSwitchToggle={togglePlatformFromTitlebar}
         onToggleConversationPinned={toggleConversationPinned}
@@ -12015,8 +12575,8 @@ function App() {
         onRequestRenameConversation={requestRenameConversation}
         onRequestRenameProjectConversation={requestRenameProjectConversation}
         onConversationTitleToast={showAppToast}
-        onToggleChatBottomPanel={() => setIsChatBottomPanelOpen((isOpen) => !isOpen)}
-        onToggleChatRightPanel={() => setIsChatRightPanelOpen((isOpen) => !isOpen)}
+        onToggleChatBottomPanel={toggleActiveChatBottomPanel}
+        onToggleChatRightPanel={toggleActiveChatRightPanel}
         onToggleSidebar={() => setIsSidebarCollapsed((isCollapsed) => !isCollapsed)}
       />
       <Content
@@ -12043,10 +12603,17 @@ function App() {
         chatScrollTop={activeChatScrollTop}
         onChatScrollPositionChange={saveChatScrollPosition}
         onSendMessage={sendMessage}
+        queuedMessages={activeQueuedMessages}
+        onDeleteQueuedMessage={deleteActiveQueuedMessage}
+        onPromoteQueuedMessage={promoteActiveQueuedMessage}
         isChatRightPanelOpen={isChatRightPanelOpen}
+        chatRightPanelWidth={activeChatRightPanelWidth}
+        chatRightPanelLockedPane={activeChatRightPanelLockedPane}
+        chatRightPanelLockedWidth={activeChatRightPanelLockedWidth}
+        onChatRightPanelResizeChange={updateActiveChatRightPanelResize}
         newChatFocusNonce={newChatFocusNonce}
         isChatBottomPanelOpen={isChatBottomPanelOpen}
-        onToggleChatBottomPanel={() => setIsChatBottomPanelOpen((isOpen) => !isOpen)}
+        onCloseChatBottomPanel={closeActiveChatBottomPanel}
       />
       {isSearchOpen ? (
         <SearchDialog
